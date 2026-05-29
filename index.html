@@ -1129,9 +1129,9 @@
   }
 
   /* ====== PRINT ====== */
-  .no-print { display: none !important; }
   @media print {
     body { background: white; }
+    .no-print { display: none !important; }
     .topbar, .report-bar, .footnote, .forms-bar,
     .forms-tabs, .section-head, .form-tab, .beta-banner,
     .floating-actions, .toast, .modal-bg { display: none !important; }
@@ -1531,7 +1531,10 @@
   <section class="view" id="view-forms">
     <div class="forms-bar no-print">
       <button class="btn ghost small" onclick="goView('view-results')">← 결과 화면으로</button>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button class="btn ghost small" onclick="saveFormDraft()">💾 신청서 임시저장</button>
+        <button class="btn ghost small" onclick="loadFormDraft()">📂 불러오기</button>
+        <span id="form-draft-status" style="font-size:11px;color:var(--muted);"></span>
         <button class="btn small" onclick="printCurrentForm()">🖨️ 현재 서식 인쇄</button>
         <button class="btn small" onclick="printCurrentForm()" style="background:#2563eb;">📄 현재 서식 PDF</button>
         <button class="btn small" onclick="printAllForms()" style="background:#059669;">📥 전체 4종 PDF/인쇄</button>
@@ -5900,6 +5903,9 @@ function renderAllForms() {
 
   // 입력 필드 이벤트 (편집 가능)
   attachFormEditHandlers();
+
+  // 임시저장 상태 표시
+  updateFormDraftStatus();
 }
 
 function switchFormTab(tab) {
@@ -6514,6 +6520,72 @@ ${projectsBlock}
 function attachFormEditHandlers() {
   // contenteditable 필드는 별도 저장 안 함 (인쇄/PDF에 그대로 반영)
   // 필요 시 input/blur 이벤트로 personalInfo 등 업데이트 가능
+}
+
+/* ============================================================
+   신청서 임시저장 / 불러오기 (contenteditable + 체크박스)
+   ============================================================ */
+const FORM_DRAFT_KEY = 'ccap_form_draft_v1';
+
+function saveFormDraft() {
+  const draft = { fields: {}, checks: {}, savedAt: new Date().toLocaleString('ko-KR') };
+  // 모든 신청서의 editable-field 저장
+  document.querySelectorAll('.form-panel [contenteditable]').forEach((el, i) => {
+    const key = (el.dataset.form4 || el.dataset.form14 || el.dataset.lp || el.dataset.lc || '') + '_' + i;
+    draft.fields[key] = el.innerHTML;
+  });
+  // 체크박스 상태 저장
+  document.querySelectorAll('.form-panel input[type="checkbox"]').forEach((el, i) => {
+    const key = (el.dataset.form4 || el.dataset.form14 || el.dataset.lp || el.dataset.lc || '') + '_' + i;
+    draft.checks[key] = el.checked;
+  });
+  // textarea 저장
+  document.querySelectorAll('.form-panel textarea').forEach((el, i) => {
+    draft.fields['ta_' + i] = el.value;
+  });
+  try {
+    localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(draft));
+    toast('✅ 신청서가 임시저장되었습니다. (' + draft.savedAt + ')');
+    updateFormDraftStatus();
+  } catch(e) {
+    toast('⚠️ 저장 실패: 저장 공간이 부족합니다.');
+  }
+}
+
+function loadFormDraft() {
+  try {
+    const raw = localStorage.getItem(FORM_DRAFT_KEY);
+    if (!raw) { toast('저장된 신청서가 없습니다.'); return; }
+    const draft = JSON.parse(raw);
+    if (!confirm('저장된 신청서를 불러올까요?\n저장일시: ' + (draft.savedAt||'알 수 없음') + '\n\n현재 작성 중인 내용은 덮어씌워집니다.')) return;
+    document.querySelectorAll('.form-panel [contenteditable]').forEach((el, i) => {
+      const key = (el.dataset.form4 || el.dataset.form14 || el.dataset.lp || el.dataset.lc || '') + '_' + i;
+      if (draft.fields[key] !== undefined) el.innerHTML = draft.fields[key];
+    });
+    document.querySelectorAll('.form-panel input[type="checkbox"]').forEach((el, i) => {
+      const key = (el.dataset.form4 || el.dataset.form14 || el.dataset.lp || el.dataset.lc || '') + '_' + i;
+      if (draft.checks[key] !== undefined) el.checked = draft.checks[key];
+    });
+    document.querySelectorAll('.form-panel textarea').forEach((el, i) => {
+      if (draft.fields['ta_' + i] !== undefined) el.value = draft.fields['ta_' + i];
+    });
+    toast('📂 신청서를 불러왔습니다.');
+  } catch(e) {
+    toast('⚠️ 불러오기 실패: 저장 데이터가 손상되었습니다.');
+  }
+}
+
+function updateFormDraftStatus() {
+  const el = document.getElementById('form-draft-status');
+  if (!el) return;
+  try {
+    const raw = localStorage.getItem(FORM_DRAFT_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      el.textContent = '💾 ' + (d.savedAt || '');
+      el.style.color = 'var(--ok)';
+    }
+  } catch(e) {}
 }
 
 /* ============================================================
