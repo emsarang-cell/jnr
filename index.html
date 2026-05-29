@@ -1052,6 +1052,10 @@
   }
   .official-form .editable-field:empty::before {
     content: '클릭하여 입력'; color: #cbb; font-size: 8pt;
+    pointer-events: none;
+  }
+  .official-form .editable-field:focus::before {
+    content: '' !important;
   }
   @media print {
     .official-form .editable-field {
@@ -1105,6 +1109,7 @@
     border: 1px solid #ccc; padding: 12px;
     font-family: inherit; font-size: 11pt; line-height: 1.6;
     background: #fff8e1; resize: vertical;
+    overflow: hidden; box-sizing: border-box;
   }
   .official-form .career-table {
     width: 100%; font-size: 10pt; margin-top: 8px;
@@ -1151,7 +1156,10 @@
       background: transparent !important; border: none !important;
     }
     .reason-textarea {
-      background: transparent !important; border: none !important;
+      background: transparent !important; border: 1px solid #999 !important;
+      overflow: visible !important; height: auto !important;
+      page-break-inside: avoid;
+      white-space: pre-wrap; word-wrap: break-word;
     }
     .official-form .change-before,
     .official-form .change-after,
@@ -2290,7 +2298,7 @@ function loadSample() {
 function clearAll() {
   if ((projects.length || personalInfo.name) && !confirm('입력된 모든 데이터(기본정보 포함)를 비웁니다. 계속하시겠습니까?')) return;
   projects = [];
-  personalInfo = { name: '', birthDate: '', field: '', specialty: '', grade: '', gradeTable: [], certNumber: '', nationalCertNumber: '', address: '', issueDate: '' };
+  personalInfo = { name: '', birthDate: '', field: '', specialty: '', grade: '', gradeTable: [], certNumber: '', nationalCertNumber: '', address: '', phone: '', mobile: '', email: '', issueDate: '' };
   renderEditor();
   renderPersonalInfo();
 }
@@ -3996,6 +4004,10 @@ async function extractInfoFromText(apiKey, rawText, signal) {
     "전문분야": "",
     "등급": "대표 등급 1개 (예: 특급)",
     "기술자번호": "",
+    "주소": "",
+    "전화번호": "",
+    "휴대전화번호": "",
+    "전자우편": "",
     "발급일": ""
   },
   "프로젝트": [
@@ -4123,6 +4135,9 @@ function mapBasicInfo(info) {
                      || info['주민등록상 주소']
                      || info.address
                      || '',
+    phone:              info.전화번호 || info.자택전화 || info.phone || '',
+    mobile:             info.휴대전화번호 || info.휴대전화 || info.핸드폰 || info.mobile || '',
+    email:              info.전자우편 || info.이메일 || info['전자우편주소'] || info.email || '',
     issueDate:          info.발급일             || info.issueDate          || ''
   };
 }
@@ -5934,6 +5949,13 @@ function switchFormTab(tab) {
   });
 }
 
+// 작성예시 펼치기/접기
+function toggleExample(key) {
+  const el = document.getElementById('example-' + key);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 // 모든 적용 결과의 사례집 분류를 통합 집계
 function aggregateClassifications(applied) {
   const 신청사항Set = new Set();
@@ -6038,6 +6060,17 @@ function renderForm4(applied, agg) {
   }).join('');
 
   return `
+    <div class="no-print" style="text-align:right; margin-bottom:10px;">
+      <button onclick="toggleExample('f4')" style="padding:6px 14px; background:#f59e0b; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">📖 작성예시 보기</button>
+    </div>
+    <div id="example-f4" class="no-print" style="display:none; margin-bottom:16px; padding:16px 20px; background:#fffbea; border:1px solid #f59e0b; border-radius:8px; font-size:11.5px; line-height:1.9; color:#444;">
+      <div style="font-weight:700; color:#d97706; margin-bottom:10px; font-size:13px;">✍️ 신고자료 경정신청서 작성예시 — 아래 내용을 참고하여 작성하세요</div>
+      <strong>[신청인 인적사항]</strong> 성명 홍길동 · 생년월일 11.11.11 · 전자우편 ksh123@kocea.or.kr · 전화 02)3416-5678 · 휴대 010-1234-5678 · 주소 서울시 강남구 언주로 650<br>
+      <strong>[신청사항]</strong> ✔ 참여기간, ✔ 담당업무 <span style="color:#999;">(경정할 항목에 체크)</span><br>
+      <strong>[관련증빙자료]</strong> ✔ 경력확인서(별지 제12호서식), ✔ 기타 : 사유서, 국민연금가입자 가입증명 등<br>
+      <strong>[수신요청]</strong> ✔ 문자(휴대전화)<br>
+      <span style="color:#999;">※ 어두운(회색) 칸은 협회에서 작성하므로 신청인이 적지 않습니다.</span>
+    </div>
     <div id="official-form4" class="official-form" style="font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:9pt;padding:12mm 15mm;max-width:210mm;margin:0 auto;background:#fff;color:#000;min-width:auto;">
       <div style="font-size:8pt;margin-bottom:2px;">■ 건설기술인 등급 인정 및 교육·훈련 등에 관한 기준[별지 제4호서식]</div>
       <div style="text-align:center;font-size:15pt;font-weight:700;letter-spacing:8px;margin:5px 0 8px;">신고자료 경정신청서</div>
@@ -6177,165 +6210,204 @@ function renderForm14(applied, agg) {
   const pi = personalInfo;
   const today = new Date();
 
-  // 경정 대상 프로젝트별 경력 행 (변경 전 / 변경 후 표시)
+  // 회색 헤더 셀 / 일반 셀 / 협회작성(회색) 빈칸
+  const GH = 'background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;vertical-align:middle;font-weight:600;font-size:8.5pt;';
+  const TD = 'border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:8.5pt;';
+  const GRAY = 'background:#d9d9d9;border:1px solid #000;padding:4px 6px;font-size:8.5pt;';
+  const EF = 'class="editable-field" contenteditable="true"';
+
+  // 경정 대상 프로젝트 행 (변경 전/후)
+  const compare = (cur, after) => {
+    if (after && cur && after !== cur) return '<span class="change-before">' + esc(cur||'공란') + '</span><br><span class="change-after">' + esc(after) + '</span>';
+    if (after && !cur) return '<span class="change-added">+ ' + esc(after) + '</span>';
+    return esc(cur || '');
+  };
   const careerRows = applied.map(({ r, i }) => {
     const cur = r.현재_기재사항 || {};
     const reco = r.추천_경정방향 || {};
-
-    // 변경 전/후 정렬 표시 (변경 = 노란색, 추가 = 파랑, 삭제 = 빨강)
-    const compare = (cur, after) => {
-      if (after && cur && after !== cur) return `<span class="change-before">${esc(cur || '공란')}</span><br><span class="change-after">${esc(after)}</span>`;
-      if (after && !cur) return `<span class="change-added">+ ${esc(after)}</span>`;
-      return esc(cur || '—');
-    };
-
-    return `
-      <tr>
-        <td colspan="2" style="text-align:left;">
-          <strong>${i + 1}. ${esc(r.프로젝트명)}</strong>
-          <div style="font-size:9pt; color:#666; margin-top:4px;">📖 ${esc((r.classification || {}).사례집_조항 || '')}</div>
-          <div style="font-size:9pt; color:#1e40af; margin-top:2px;">처리유형: ${esc((r.classification || {}).처리유형 || '')}</div>
-        </td>
-        <td>${esc(r.참여기간 || '—')}</td>
-        <td>${compare(cur.발주자, reco.발주자)}</td>
-        <td>${compare(cur.공사종류, reco.공사종류)}</td>
-        <td>${compare(cur.직무분야, reco.직무분야)}</td>
-        <td>${compare(cur.전문분야, reco.전문분야)}</td>
-        <td>${compare(cur.담당업무, reco.담당업무)}</td>
-        <td>
-          <span class="editable-field" contenteditable="true" data-form14="resp-${i}">${esc(reco.책임정도 || cur.책임정도 || '참여기술인')}</span>
-        </td>
-        <td>
-          <span class="editable-field" contenteditable="true" data-form14="pos-${i}">${esc(reco.직위 || cur.직위 || '')}</span>
-        </td>
-      </tr>
-    `;
+    return '<tr>'
+      + '<td style="' + TD + 'text-align:left;"><strong>' + (i+1) + '. ' + esc(r.프로젝트명||'') + '</strong>'
+        + '<div style="font-size:7.5pt;color:#1e40af;">' + esc((r.classification||{}).처리유형||'') + '</div></td>'
+      + '<td style="' + TD + '">' + esc(r.참여기간||'') + '</td>'
+      + '<td style="' + TD + '">' + compare(cur.발주자, reco.발주자) + '</td>'
+      + '<td style="' + TD + '">' + compare(cur.공사종류, reco.공사종류) + '</td>'
+      + '<td style="' + TD + '">' + compare(cur.직무분야, reco.직무분야) + '</td>'
+      + '<td style="' + TD + '">' + compare(cur.전문분야, reco.전문분야) + '</td>'
+      + '<td style="' + TD + '">' + compare(cur.담당업무, reco.담당업무) + '</td>'
+      + '<td style="' + TD + '"><span ' + EF + ' data-form14="resp-' + i + '">' + esc(reco.책임정도||cur.책임정도||'참여기술인') + '</span></td>'
+      + '<td style="' + TD + '"><span ' + EF + ' data-form14="pos-' + i + '">' + esc(reco.직위||cur.직위||'') + '</span></td>'
+      + '</tr>';
   }).join('');
 
   return `
-    <div class="official-form" id="official-form14">
-      <div class="form-header">
-        <div class="form-no">■ 건설기술 진흥법 시행규칙 [별지 제14호서식] &lt;개정 2024. 4. 23.&gt;</div>
-        <div class="form-title" style="font-size:20pt;">건설기술인 경력변경신고서</div>
-      </div>
-      <div class="form-notice">※ 어두운 칸은 신고인이 적지 않으며, 유의사항을 확인하시고 작성하여 주시기 바랍니다.</div>
+    <div class="no-print" style="text-align:right; margin-bottom:10px;">
+      <button onclick="toggleExample('f14')" style="padding:6px 14px; background:#f59e0b; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">📖 작성예시 보기</button>
+    </div>
+    <div id="example-f14" class="no-print" style="display:none; margin-bottom:16px; padding:16px 20px; background:#fffbea; border:1px solid #f59e0b; border-radius:8px; font-size:11.5px; line-height:1.9; color:#444;">
+      <div style="font-weight:700; color:#d97706; margin-bottom:10px; font-size:13px;">✍️ 경력변경신고서 작성예시 — 아래 내용을 참고하여 작성하세요</div>
+      <strong>[인적사항]</strong> 성명 홍길동 · 주민등록번호 123456-1234567 · 전자우편 123@kocea.or.kr · 전화 02)1234-5678 · 휴대 010-1234-5678 · 주소 서울특별시 강남구 언주로 650<br>
+      <strong>[현재 소속회사]</strong> (주)△△건설 · 사업자번호 111-11-11111 · 주소 서울시 강남구 삼성로 638 · 건설업종 토목건축공사업(토목건축-11) · 입사일 2008.06.01 · 전화 02)3416-9500<br>
+      <strong>[기술경력 예시]</strong> 08.1.1~09.12.31 / 고속국도제400호선여주~양평간건설공사 / 한국도로공사 / 고속국도,터널 / 50,000(백만원) / 토목 / 토목시공 / 시공 / 현장대리인 / 부장 / NATM<br>
+      <span style="color:#999;">※ 적용 융·복합건설기술, 적용 신기술 등, 시설물종류란은 경력확인서에서 발주청(인·허가기관)의 확인(날인)을 받아 제출하는 경우만 작성</span>
+    </div>
 
-      <table>
+    <div class="official-form" id="official-form14" style="font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:8.5pt;padding:12mm 15mm;max-width:210mm;margin:0 auto;background:#fff;color:#000;min-width:auto;">
+      <div style="font-size:8pt;margin-bottom:2px;">■ 건설기술 진흥법 시행규칙 [별지 제14호서식] &lt;개정 2024. 4. 23.&gt;</div>
+      <div style="text-align:center;font-size:16pt;font-weight:700;letter-spacing:4px;margin:5px 0 6px;">건설기술인 경력변경신고서</div>
+      <div style="font-size:8pt;margin-bottom:3px;">※ 어두운 칸은 신고인이 적지 않으며, 유의사항을 확인하시고 작성하여 주시기 바랍니다.</div>
+
+      <table style="width:100%;border-collapse:collapse;">
+        <!-- 접수 행 (협회작성 - 회색) -->
         <tr>
-          <th>접수번호</th><td></td>
-          <th>접수일</th><td></td>
-          <th>실명확인</th><td></td>
-          <th>처리기간</th><td>즉시</td>
+          <th style="${GH}width:55px;">접수번호</th>
+          <td style="${GRAY}width:90px;">&nbsp;</td>
+          <th style="${GH}">접수일</th>
+          <td style="${GRAY}width:90px;">&nbsp;</td>
+          <th style="${GH}">실명확인</th>
+          <td style="${GRAY}width:90px;">&nbsp;</td>
+          <th style="${GH}">처리기간</th>
+          <td style="${GRAY}text-align:center;width:45px;">즉시</td>
+        </tr>
+        <!-- 인적사항 -->
+        <tr>
+          <th style="${GH}width:55px;" rowspan="3">인적사항</th>
+          <td style="${TD}" colspan="4"><strong>성명</strong> <span ${EF} data-form14="name">${esc(pi.name||'')}</span></td>
+          <td style="${TD}" colspan="3"><strong>주민등록번호</strong> <span ${EF} data-form14="rrn" style="min-width:120px;"></span></td>
         </tr>
         <tr>
-          <th rowspan="3">인적사항</th>
-          <td colspan="3">
-            <strong>성명</strong> <span class="editable-field" contenteditable="true" data-form14="name">${esc(pi.name || '')}</span>
-          </td>
-          <td colspan="3">
-            <strong>주민등록번호</strong> <span class="editable-field" contenteditable="true" data-form14="rrn" style="min-width:140px;"></span>
-          </td>
+          <td style="${TD}" colspan="3"><strong>전자우편주소</strong> <span ${EF} data-form14="email">${esc(pi.email||'')}</span></td>
+          <td style="${TD}" colspan="2"><strong>전화번호</strong> <span ${EF} data-form14="phone">${esc(pi.phone||'')}</span></td>
+          <td style="${TD}" colspan="2"><strong>휴대전화번호</strong> <span ${EF} data-form14="mobile">${esc(pi.mobile||'')}</span></td>
         </tr>
         <tr>
-          <td colspan="2"><strong>전자우편주소</strong> <span class="editable-field" contenteditable="true" data-form14="email">${esc(pi.email || '')}</span></td>
-          <td colspan="2"><strong>전화번호</strong> <span class="editable-field" contenteditable="true" data-form14="phone">${esc(pi.phone || '')}</span></td>
-          <td colspan="2"><strong>휴대전화번호</strong> <span class="editable-field" contenteditable="true" data-form14="mobile">${esc(pi.mobile || '')}</span></td>
+          <td style="${TD}" colspan="7"><strong>주소</strong> <span ${EF} data-form14="address" style="min-width:300px;">${esc(pi.address||'')}</span></td>
+        </tr>
+        <!-- 종전 소속회사 -->
+        <tr>
+          <th style="${GH}width:55px;" rowspan="3">종전<br>소속회사</th>
+          <td style="${TD}" colspan="5"><strong>회사명(대표자)</strong> <span ${EF} data-form14="prev-company" style="min-width:180px;"></span></td>
+          <td style="${TD}" colspan="2"><strong>법인 또는 사업자등록번호</strong><br><span ${EF} data-form14="prev-bizno"></span></td>
         </tr>
         <tr>
-          <td colspan="6"><strong>주소</strong> <span class="editable-field" contenteditable="true" data-form14="address" style="min-width:300px;">${esc(pi.address || '')}</span></td>
+          <td style="${TD}" colspan="5"><strong>주소</strong> <span ${EF} data-form14="prev-addr" style="min-width:260px;"></span></td>
+          <td style="${TD}" colspan="2"><strong>건설업종(면허번호 또는 등록번호)</strong><br><span ${EF} data-form14="prev-license"></span></td>
         </tr>
         <tr>
-          <th rowspan="3">종전<br>소속회사</th>
-          <td colspan="4">
-            <strong>회사명(대표자)</strong> <span class="editable-field" contenteditable="true" data-form14="prev-company" style="min-width:200px;"></span>
-          </td>
-          <td colspan="2">
-            <strong>법인 또는 사업자등록번호</strong><br>
-            <span class="editable-field" contenteditable="true" data-form14="prev-bizno"></span>
-          </td>
+          <td style="${TD}" colspan="2"><strong>입사일</strong> <span ${EF} data-form14="prev-join"></span></td>
+          <td style="${TD}" colspan="3"><strong>퇴사일</strong> <span ${EF} data-form14="prev-leave"></span></td>
+          <td style="${TD}" colspan="2"><strong>전화번호</strong> <span ${EF} data-form14="prev-tel"></span></td>
+        </tr>
+        <!-- 현재 소속회사 -->
+        <tr>
+          <th style="${GH}width:55px;" rowspan="3">현재<br>소속회사</th>
+          <td style="${TD}" colspan="5"><strong>회사명(대표자)</strong> <span ${EF} data-form14="cur-company" style="min-width:180px;"></span></td>
+          <td style="${TD}" colspan="2"><strong>사업자등록번호(법인등록번호)</strong><br><span ${EF} data-form14="cur-bizno"></span></td>
         </tr>
         <tr>
-          <td colspan="4">
-            <strong>주소</strong> <span class="editable-field" contenteditable="true" data-form14="prev-addr" style="min-width:300px;"></span>
-          </td>
-          <td colspan="2">
-            <strong>건설업종(면허번호 또는 등록번호)</strong><br>
-            <span class="editable-field" contenteditable="true" data-form14="prev-license"></span>
-          </td>
+          <td style="${TD}" colspan="5"><strong>주소</strong> <span ${EF} data-form14="cur-addr" style="min-width:260px;"></span></td>
+          <td style="${TD}" colspan="2"><strong>건설업종(면허번호 또는 등록번호)</strong><br><span ${EF} data-form14="cur-license"></span></td>
         </tr>
         <tr>
-          <td colspan="2"><strong>입사일</strong> <span class="editable-field" contenteditable="true" data-form14="prev-join"></span></td>
-          <td colspan="2"><strong>퇴사일</strong> <span class="editable-field" contenteditable="true" data-form14="prev-leave"></span></td>
-          <td colspan="2"><strong>전화번호</strong> <span class="editable-field" contenteditable="true" data-form14="prev-tel"></span></td>
-        </tr>
-        <tr>
-          <th rowspan="3">현재<br>소속회사</th>
-          <td colspan="4">
-            <strong>회사명(대표자)</strong> <span class="editable-field" contenteditable="true" data-form14="cur-company" style="min-width:200px;"></span>
-          </td>
-          <td colspan="2">
-            <strong>사업자등록번호(법인등록번호)</strong><br>
-            <span class="editable-field" contenteditable="true" data-form14="cur-bizno"></span>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="4">
-            <strong>주소</strong> <span class="editable-field" contenteditable="true" data-form14="cur-addr" style="min-width:300px;"></span>
-          </td>
-          <td colspan="2">
-            <strong>건설업종(면허번호 또는 등록번호)</strong><br>
-            <span class="editable-field" contenteditable="true" data-form14="cur-license"></span>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="4"><strong>입사일</strong> <span class="editable-field" contenteditable="true" data-form14="cur-join"></span></td>
-          <td colspan="2"><strong>전화번호</strong> <span class="editable-field" contenteditable="true" data-form14="cur-tel"></span></td>
+          <td style="${TD}" colspan="5"><strong>입사일</strong> <span ${EF} data-form14="cur-join"></span></td>
+          <td style="${TD}" colspan="2"><strong>전화번호</strong> <span ${EF} data-form14="cur-tel"></span></td>
         </tr>
       </table>
 
-      <div style="margin-top:20px; font-weight:600; font-size:13pt; text-align:center;">기술경력</div>
-
-      <table class="career-table" style="margin-top:8px;">
+      <div style="text-align:center;font-weight:700;font-size:10pt;margin:10px 0 4px;background:#d9d9d9;border:1px solid #000;padding:3px;">기술경력</div>
+      <table style="width:100%;border-collapse:collapse;font-size:8pt;">
         <thead>
           <tr>
-            <th colspan="2">사업명</th>
-            <th>참여기간</th>
-            <th>발주자(청)</th>
-            <th>공사종류</th>
-            <th>직무분야</th>
-            <th>전문분야</th>
-            <th>담당업무</th>
-            <th>책임정도</th>
-            <th>직위</th>
+            <th style="${GH}font-size:8pt;" colspan="2">참여사업명</th>
+            <th style="${GH}font-size:8pt;">참여기간</th>
+            <th style="${GH}font-size:8pt;">발주자(청)</th>
+            <th style="${GH}font-size:8pt;">공사종류</th>
+            <th style="${GH}font-size:8pt;">직무분야</th>
+            <th style="${GH}font-size:8pt;">전문분야</th>
+            <th style="${GH}font-size:8pt;">담당업무</th>
+            <th style="${GH}font-size:8pt;">책임정도</th>
+            <th style="${GH}font-size:8pt;">직위</th>
           </tr>
         </thead>
         <tbody>
-          ${careerRows || '<tr><td colspan="10" style="text-align:center; padding:20px;">경정 대상 프로젝트가 없습니다.</td></tr>'}
+          ${careerRows || '<tr><td style="' + TD + 'text-align:center;padding:16px;" colspan="10">경정 대상 프로젝트가 없습니다.</td></tr>'}
         </tbody>
       </table>
 
-      <div style="margin-top:14px; padding:10px; background:#fffbeb; border-left:3px solid #d97706; font-size:9pt;">
+      <div style="margin-top:8px;padding:6px 10px;background:#fffbeb;border-left:3px solid #d97706;font-size:7.5pt;">
         ☞ 적용 융·복합건설기술, 적용 신기술 등, 시설물종류란은 경력확인서에서 발주청(인·허가기관)의 확인(날인)을 받아 제출하는 경우만 작성
       </div>
 
-      <p style="margin: 16px 0; font-size: 11pt;">
-        「건설기술 진흥법」 제21조제1항 및 같은 법 시행규칙 제18조제2항에 따라 위와 같이 변경신고합니다.
-      </p>
+      <p style="margin:10px 0 4px;font-size:9pt;">「건설기술 진흥법」 제21조제1항 및 같은 법 시행규칙 제18조제2항에 따라 위와 같이 변경신고합니다.</p>
 
-      <div class="signature-area">
-        ${today.getFullYear()} 년 ${today.getMonth() + 1} 월 ${today.getDate()} 일<br><br>
-        신고인(본인) <span class="editable-field" contenteditable="true" data-form14="signer">${esc(pi.name || '')}</span> <span class="signature-line"></span> (서명 또는 인)
+      <div style="text-align:right;font-size:9pt;margin:6px 20px 4px 0;">
+        <span ${EF} data-form14="date-y">${today.getFullYear()}</span> 년
+        <span ${EF} data-form14="date-m">${today.getMonth()+1}</span> 월
+        <span ${EF} data-form14="date-d">${today.getDate()}</span> 일
       </div>
+      <div style="text-align:center;font-size:9pt;margin:6px 0;">
+        신고인(본인) <span ${EF} data-form14="signer" style="min-width:80px;">${esc(pi.name||'')}</span>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="font-size:7.5pt;color:#888;">(서명 또는 인)</span>
+      </div>
+      <div style="font-size:10pt;font-weight:700;margin:8px 0 10px;">수탁기관의 장 귀하</div>
 
-      <div style="margin-top:20px; font-size:11pt;">
-        <strong>수탁기관의 장 귀하</strong>
-      </div>
+      <!-- 첨부서류 표 -->
+      <table style="width:100%;border-collapse:collapse;font-size:7.5pt;">
+        <tr>
+          <th style="${GH}width:50px;" rowspan="3">첨부서류</th>
+          <th style="${GH}">신고인(대표자) 제출서류</th>
+          <th style="${GH}">접수 담당자 확인사항</th>
+          <th style="${GH}width:90px;">수수료</th>
+        </tr>
+        <tr>
+          <td style="${TD}font-size:7pt;line-height:1.5;" rowspan="2">
+            1. 「건설기술 진흥법 시행규칙」 별지 제12호서식의 경력확인서 또는 별지 제13호서식의 국외경력확인서[발주자, 건설공사의 허가·인가·승인 등을 한 행정기관 또는 사용자(대표자)의 확인을 받은 것으로 한정합니다]<br>
+            2. 근무처 또는 경력 사항을 증명할 수 있는 서류(해당하는 사람만 첨부합니다)
+          </td>
+          <td style="${GRAY}font-size:7pt;line-height:1.5;">
+            다음 각 목의 서류(신고·변경신고 사무처리를 위하여 필요한 경우만 해당합니다)<br>
+            1. 국가기술자격취득사항 확인서<br>
+            2. 건강보험자격득실확인서 또는 국민연금가입자가입증명<br>
+            3. 출입국에 관한 사실증명
+          </td>
+          <td style="${GRAY}font-size:7pt;text-align:center;line-height:1.4;">「건설기술 진흥법 시행규칙」 제18조제7항에 따른 수수료</td>
+        </tr>
+        <tr style="display:none;"><td></td></tr>
+      </table>
 
-      <div class="form-note">
-        <strong>※ 신고인(대표자) 제출서류</strong><br>
-        1. 「건설기술 진흥법 시행규칙」 별지 제12호서식의 경력확인서 또는 별지 제13호서식의 국외경력확인서<br>
-        2. 근무처 또는 경력 사항을 증명할 수 있는 서류(해당하는 사람만 첨부합니다)
-      </div>
+      <!-- 행정정보 공동이용 동의서 -->
+      <table style="width:100%;border-collapse:collapse;font-size:7.5pt;margin-top:0;">
+        <tr><td style="${GH}text-align:center;">행정정보 공동이용 동의서</td></tr>
+        <tr><td style="${TD}font-size:7pt;line-height:1.6;">
+          본인은 이 건 업무처리와 관련하여 협회가「전자정부법」제36조제1항에 따른 행정정보의 공동이용을 통하여 위의 확인사항인<br>
+          [ <input type="checkbox" data-form14="agree-cert"> ]국가기술자격취득사항확인서, &nbsp;[ <input type="checkbox" data-form14="agree-health"> ]건강보험자격득실확인서, &nbsp;[ <input type="checkbox" data-form14="agree-pension"> ]국민연금가입자가입증명, &nbsp;[ <input type="checkbox" data-form14="agree-immig"> ]출입국에 관한 사실증명을 확인하는 것에 동의합니다.
+          <div style="text-align:right;margin-top:6px;">신고인 <span style="font-size:7pt;color:#888;">(서명 또는 인)</span></div>
+        </td></tr>
+      </table>
+
+      <!-- 유의사항 -->
+      <table style="width:100%;border-collapse:collapse;font-size:7pt;margin-top:0;">
+        <tr><td style="${GH}text-align:center;font-size:7.5pt;">유의사항</td></tr>
+        <tr><td style="${TD}font-size:7pt;line-height:1.6;">
+          1. 신고인(본인)의 서명 또는 날인은 본인이 직접 해야 하며 타인이 이를 위조하는 경우「형법」제239조에 따라 처벌 받을 수 있습니다.<br>
+          2. 소속회사 및 기술경력 작성방법은 별지 제12호서식의 경력확인서 작성방법을 참고하여 작성하면 됩니다.<br>
+          3. 대리인이 신고 시 실명확인을 위해 아래의 기재사항을 적어야 합니다.
+        </td></tr>
+      </table>
+
+      <!-- 대리인 -->
+      <table style="width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:0;table-layout:fixed;">
+        <colgroup><col style="width:50px;"><col style="width:28px;"><col style="width:28%;"><col style="width:38px;"><col style="width:24%;"><col style="width:38px;"><col></colgroup>
+        <tr>
+          <th style="${GH}font-size:7.5pt;">대리인</th>
+          <th style="${GH}font-size:8pt;">성명</th>
+          <td style="${TD}"><span ${EF} data-form14="agent-name" style="min-width:80px;"></span></td>
+          <th style="${GH}font-size:7.5pt;">생년<br>월일</th>
+          <td style="${TD}"><span ${EF} data-form14="agent-birth" style="min-width:80px;"></span></td>
+          <th style="${GH}font-size:7.5pt;">연락처</th>
+          <td style="${TD}"><span ${EF} data-form14="agent-tel" style="min-width:90px;"></span></td>
+        </tr>
+      </table>
+      <div style="text-align:right;font-size:7.5pt;color:#555;margin-top:3px;">210㎜×297㎜[백상지(80g/㎡) 또는 중질지(80g/㎡)]</div>
     </div>
   `;
 }
@@ -6356,8 +6428,22 @@ function renderLetterPersonal(applied, agg) {
 
   return `
     <div class="official-form" id="official-letter-personal" style="padding:50px 70px;">
-      <div style="text-align:right; margin-bottom:10px;">
-        <span style="display:inline-block; padding:4px 12px; border:1px solid #000; font-size:10pt;">작성예시</span>
+      <div class="no-print" style="text-align:right; margin-bottom:10px;">
+        <button onclick="toggleExample('lp')" style="padding:6px 14px; background:#f59e0b; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">📖 작성예시 보기</button>
+      </div>
+      <div id="example-lp" class="no-print" style="display:none; margin-bottom:16px; padding:16px 20px; background:#fffbea; border:1px solid #f59e0b; border-radius:8px; font-size:12px; line-height:1.9; color:#444;">
+        <div style="font-weight:700; color:#d97706; margin-bottom:10px; font-size:13px;">✍️ 사유서(본인) 작성예시 — 아래 내용을 참고하여 작성하세요</div>
+        <div style="border-bottom:1px dashed #f59e0b; padding-bottom:8px; margin-bottom:8px;">
+          ○ 성명 : 홍길동 &nbsp;|&nbsp; ○ 생년월일 : 11.11.11<br>
+          ○ 주소 : 서울시 강남구 논현동 238-5 &nbsp;|&nbsp; ○ 연락처 : 010-1111-1111<br>
+          ○ 경정신청내용 : 사업명, 담당업무 경정 <span style="color:#999;">(경정요청할 내용을 간략하게 작성)</span>
+        </div>
+        <strong>□ 경정 요청사항</strong><br>
+        상기 본인은 OO분야 건설기술인으로 OO종합건설(주)에 근무중이고, OO분야의 각종 건설공사(또는 건설기술용역)업무에 참여하여 OO업무를 수행하였으나, 건설기술인협회에 본인의 기술경력사항 신고시… <span style="color:#999;">(경정 근거 및 요청사항을 상세히 기재)</span><br><br>
+        <strong>□ 제증명서 미반납 사유</strong><br>
+        <span style="color:#999;">발급내용과 반납하지 못하는 사유 등을 구체적으로 기재</span><br><br>
+        <strong>□ 경정처리 이후 변동되는 사항에 대한 확인 (등급하락 등)</strong><br>
+        <span style="color:#999;">직무/전문분야 변경에 따른 기술등급 하락 및 경정에 대한 추후 이의제기치 않음을 확인하는 내용으로 기재</span>
       </div>
       <div style="text-align:center; font-size:22pt; font-weight:700; letter-spacing:8px; margin: 10px 0 30px;">사 유 서 (본인)</div>
 
@@ -6405,7 +6491,9 @@ function renderLetterPersonal(applied, agg) {
       </div>
 
       <div class="signature-area" style="margin-top:40px;">
-        ${today.getFullYear()} 년 ${today.getMonth() + 1} 월 ${today.getDate()} 일<br><br>
+        <span class="editable-field" contenteditable="true" data-lp="date-y">${today.getFullYear()}</span> 년
+        <span class="editable-field" contenteditable="true" data-lp="date-m">${today.getMonth() + 1}</span> 월
+        <span class="editable-field" contenteditable="true" data-lp="date-d">${today.getDate()}</span> 일<br><br>
         성 명 : <span class="editable-field" contenteditable="true" data-lp="signer">${esc(pi.name || '')}</span> <span class="signature-line"></span> (서명 또는 인)
       </div>
     </div>
@@ -6424,15 +6512,29 @@ function renderLetterCompany(applied, agg) {
 
   return `
     <div class="official-form" id="official-letter-company" style="padding:50px 70px;">
-      <div style="text-align:right; margin-bottom:10px;">
-        <span style="display:inline-block; padding:4px 12px; border:1px solid #000; font-size:10pt;">작성예시</span>
+      <div class="no-print" style="text-align:right; margin-bottom:10px;">
+        <button onclick="toggleExample('lc')" style="padding:6px 14px; background:#f59e0b; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;">📖 작성예시 보기</button>
+      </div>
+      <div id="example-lc" class="no-print" style="display:none; margin-bottom:16px; padding:16px 20px; background:#fffbea; border:1px solid #f59e0b; border-radius:8px; font-size:12px; line-height:1.9; color:#444;">
+        <div style="font-weight:700; color:#d97706; margin-bottom:10px; font-size:13px;">✍️ 사유서(업체) 작성예시 — 아래 내용을 참고하여 작성하세요</div>
+        <div style="border-bottom:1px dashed #f59e0b; padding-bottom:8px; margin-bottom:8px;">
+          ○ 업체명 : ㈜한국건설기술인협회 &nbsp;|&nbsp; ○ 법인/사업자번호 : 123-456-789<br>
+          ○ 주소 : 서울시 강남구 논현동 238-5 &nbsp;|&nbsp; ○ 연락처 : 02-123-4567<br>
+          ○ 기술인명(생년월일) : 홍길동(0000.00.00)
+        </div>
+        <strong>□ 경정 요청사항</strong><br>
+        상기 기술인은 OO분야 건설기술인으로 OO종합건설(주)에 근무중이고, OO분야의 각종 건설공사(또는 건설기술용역)업무에 참여하여 OO업무를 수행하였으나, 건설기술인협회에 본인의 기술경력사항 신고시… <span style="color:#999;">(경정 근거 및 요청사항을 상세히 기재)</span><br><br>
+        <strong>□ 제증명서 미반납 사유</strong><br>
+        <span style="color:#999;">발급내용과 반납하지 못하는 사유 등을 구체적으로 기재</span><br><br>
+        <strong>□ 경정처리 이후 변동되는 사항에 대한 확인 (등급하락 등)</strong><br>
+        <span style="color:#999;">직무/전문분야 변경에 따른 기술등급 하락 및 경정에 대한 추후 이의제기치 않음을 확인하는 내용으로 기재</span>
       </div>
       <div style="text-align:center; font-size:22pt; font-weight:700; letter-spacing:8px; margin: 10px 0 30px;">사 유 서 (업체)</div>
 
       <div style="margin-bottom:20px; line-height:2; font-size:12pt;">
         ○ 업 체 명 : <span class="editable-field" contenteditable="true" data-lc="company" style="min-width:200px;"></span><br>
         ○ 법인 또는 사업자번호 : <span class="editable-field" contenteditable="true" data-lc="bizno"></span><br>
-        ○ 주 소 : <span class="editable-field" contenteditable="true" data-lc="addr" style="min-width:300px;"></span><br>
+        ○ 주 소 : <span class="editable-field" contenteditable="true" data-lc="addr" style="min-width:300px;">${esc(pi.address || '')}</span><br>
         ○ 연 락 처 : <span class="editable-field" contenteditable="true" data-lc="tel"></span><br>
         ○ 기 술 인 명(생년월일) : <span class="editable-field" contenteditable="true" data-lc="techname">${esc(pi.name || '')} (${esc(pi.birthDate || '')})</span>
       </div>
@@ -6530,9 +6632,25 @@ ${projectsBlock}
    편집 핸들러 - contenteditable + textarea 변경 저장
    (현재는 단순 표시만; 추후 인쇄 시 자동 반영됨)
    ============================================================ */
+function autoResizeTextarea(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = (ta.scrollHeight + 4) + 'px';
+}
+
 function attachFormEditHandlers() {
-  // contenteditable 필드는 별도 저장 안 함 (인쇄/PDF에 그대로 반영)
-  // 필요 시 input/blur 이벤트로 personalInfo 등 업데이트 가능
+  // textarea 자동 높이 조절 (내용 늘면 칸도 늘어남)
+  document.querySelectorAll('.form-panel .reason-textarea').forEach(ta => {
+    autoResizeTextarea(ta);  // 초기 높이 설정
+    ta.addEventListener('input', () => autoResizeTextarea(ta));
+  });
+}
+
+// 인쇄 직전 모든 textarea 높이를 내용 전체로 확장
+function expandAllTextareasForPrint() {
+  document.querySelectorAll('.form-panel .reason-textarea').forEach(ta => {
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  });
 }
 
 /* ============================================================
@@ -6627,6 +6745,9 @@ function printCurrentForm() {
   const origTitle = document.title;
   document.title = `경정신청서_${tabMap[currentFormTab] || '서식'}_${personalInfo.name || '제출용'}`;
 
+  // textarea 전체 내용 보이게 확장
+  expandAllTextareasForPrint();
+
   setTimeout(() => {
     window.print();
     // 인쇄 후 원상복구
@@ -6642,6 +6763,9 @@ function printAllForms() {
 
   const origTitle = document.title;
   document.title = `경정신청서_전체4종_${personalInfo.name || '제출용'}`;
+
+  // textarea 전체 내용 보이게 확장
+  expandAllTextareasForPrint();
 
   setTimeout(() => {
     window.print();
