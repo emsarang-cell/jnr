@@ -574,7 +574,7 @@
   /* ====== PERSONAL INFO & UPLOAD STEPS ====== */
   .pi-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 16px 18px;
   }
   .pi-field label {
@@ -936,14 +936,14 @@
   }
 
   @media (max-width: 980px) {
-    .pi-grid { grid-template-columns: repeat(3, 1fr); }
+    .pi-grid { grid-template-columns: repeat(5, 1fr); }
     .pi-report-grid { grid-template-columns: 1fr 1fr; }
     .pi-r-field:nth-child(3n) { border-right: 1px solid var(--line); }
     .pi-r-field:nth-child(2n) { border-right: none; }
     .steps-grid { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 640px) {
-    .pi-grid { grid-template-columns: 1fr 1fr; }
+    .pi-grid { grid-template-columns: repeat(3, 1fr); }
     .steps-grid { grid-template-columns: 1fr; }
     .how-to-use h2 { font-size: 24px; }
   }
@@ -1327,7 +1327,8 @@
             <thead>
               <tr>
                 <th style="width: 220px;">프로젝트명/용역명</th>
-                <th style="width: 200px;">참여기간</th>
+                <th style="width: 130px;">시작일</th>
+                <th style="width: 130px;">종료일</th>
                 <th style="width: 130px;">발주자</th>
                 <th style="width: 110px;">공사종류</th>
                 <th style="width: 110px;">직무분야</th>
@@ -1359,8 +1360,8 @@
       </div>
 
       <div class="help">
-        <strong>입력 가이드.</strong> 참여기간은 <code>2023.01 ~ 2023.12</code> 또는 <code>2023.01.15 ~ 2023.12.31</code> 형식으로 입력하세요.
-        일자가 누락된 경우 자동으로 인정일 산정 불이익(시작월 말일~종료월 1일)을 진단합니다.
+        <strong>입력 가이드.</strong> 시작일·종료일은 숫자만 입력해도 자동으로 날짜 형식(<code>YYYY.MM.DD</code>)으로 변환됩니다.
+        일자(DD) 없이 <code>YYYY.MM</code>만 입력하면 협회 산정 기준에 따라 시작일은 해당 월 말일, 종료일은 해당 월 1일로 자동 보완됩니다.
         '실제 수행업무'에는 담당업무 칸이 직책 위주로 기재되었을 때 시공·공사관리·품질관리 등 실제 업무를 보충 기입하면 진단 정확도가 높아집니다.
         <br><br>
         📖 진단 규칙 및 사용자 정의 규칙 관리는 <a href="javascript:goView('view-rules')" style="color: var(--accent); font-weight: 600;">규칙 가이드 페이지</a>에서 확인할 수 있습니다.
@@ -2056,7 +2057,7 @@ const BUILTIN_RULES = [
 const SAMPLE = [
   {
     name: '○○ 도시재생사업 건설사업관리용역',
-    period: '2023.01 ~ 2023.12',         // Rule 1: 일자 누락
+    startDate: '2023.01', endDate: '2023.12',  // Rule 1: 일자 누락
     owner: '○○시청',
     workType: '토목',
     field: '건설사업관리',
@@ -2068,7 +2069,7 @@ const SAMPLE = [
   },
   {
     name: '◇◇ 행복주택 신축공사 감리용역',
-    period: '2022.03.15 ~ 2023.08.20',
+    startDate: '2022.03.15', endDate: '2023.08.20',
     owner: '',                            // Rule 2: 발주자 공란
     workType: '건축',
     field: '감리',
@@ -2080,7 +2081,7 @@ const SAMPLE = [
   },
   {
     name: '△△ 신축공사 건설사업관리용역',
-    period: '2021.05.10 ~ 2022.11.30',
+    startDate: '2021.05.10', endDate: '2022.11.30',
     owner: '한국토지주택공사',
     workType: '',                         // Rule 3: 공사종류 공란
     field: '건설사업관리',
@@ -2092,7 +2093,7 @@ const SAMPLE = [
   },
   {
     name: '○○ 오피스텔 신축공사',
-    period: '2020.04.01 ~ 2021.10.15',
+    startDate: '2020.04.01', endDate: '2021.10.15',
     owner: '(주)○○개발',
     workType: '건축',
     field: '시공',
@@ -2104,7 +2105,7 @@ const SAMPLE = [
   },
   {
     name: '◎◎ 도로건설공사',
-    period: '2019.07.01 ~ 2020.06.30',
+    startDate: '2019.07.01', endDate: '2020.06.30',
     owner: '국토교통부 ○○지방국토관리청',
     workType: '토목',
     field: '시공',
@@ -2126,7 +2127,8 @@ function renderEditor() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input value="${esc(p.name)}" data-i="${i}" data-k="name"></td>
-      <td><input value="${esc(p.period)}" data-i="${i}" data-k="period" placeholder="YYYY.MM ~ YYYY.MM" style="min-width:188px;"></td>
+      <td><input value="${esc(p.startDate||'')}" data-i="${i}" data-k="startDate" placeholder="YYYY.MM.DD" class="date-input" style="min-width:110px;" maxlength="10"></td>
+      <td><input value="${esc(p.endDate||'')}" data-i="${i}" data-k="endDate" placeholder="YYYY.MM.DD" class="date-input" style="min-width:110px;" maxlength="10"></td>
       <td><input value="${esc(p.owner)}" data-i="${i}" data-k="owner"></td>
       <td><input value="${esc(p.workType)}" data-i="${i}" data-k="workType"></td>
       <td><input value="${esc(p.field)}" data-i="${i}" data-k="field"></td>
@@ -2147,8 +2149,72 @@ function renderEditor() {
       const i = +e.target.dataset.i;
       const k = e.target.dataset.k;
       projects[i][k] = e.target.value;
+      // period 자동 동기화 (내부 로직용)
+      if (k === 'startDate' || k === 'endDate') {
+        const s = projects[i].startDate || '';
+        const e2 = projects[i].endDate || '';
+        projects[i].period = (s && e2) ? s + ' ~ ' + e2 : (s || e2);
+      }
     });
+    // 날짜 입력 자동 포맷: 숫자만 입력해도 YYYY.MM.DD 형식으로
+    if (el.classList.contains('date-input')) {
+      el.addEventListener('blur', e => {
+        const val = e.target.value.trim();
+        if (!val) return;
+        const formatted = _formatDateInput(val);
+        if (formatted !== val) {
+          e.target.value = formatted;
+          const i = +e.target.dataset.i;
+          const k = e.target.dataset.k;
+          projects[i][k] = formatted;
+          // period 재동기화
+          const s = projects[i].startDate || '';
+          const en = projects[i].endDate || '';
+          projects[i].period = (s && en) ? s + ' ~ ' + en : (s || en);
+        }
+      });
+    }
   });
+}
+
+/* 날짜 자동 포맷 함수
+   입력: '202301', '2023.1', '20230115', '2023.01.15' 등
+   출력: 'YYYY.MM' 또는 'YYYY.MM.DD'
+   일자 없으면 startDate는 말일, endDate는 1일로 자동 보완 (blur 후 렌더 시) */
+function _formatDateInput(raw) {
+  // 숫자와 구분자만 추출
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (digits.length < 6) return raw; // 너무 짧으면 그대로
+
+  const y = digits.slice(0, 4);
+  const m = digits.slice(4, 6);
+  const d = digits.slice(6, 8);
+
+  if (!y || !m) return raw;
+  const mo = String(+m).padStart(2, '0');
+  if (d) {
+    const day = String(+d).padStart(2, '0');
+    return y + '.' + mo + '.' + day;
+  }
+  return y + '.' + mo;
+}
+
+/* 시작일/종료일에서 일자 누락 시 자동 보완
+   startDate: 일자 없으면 → 해당 월 말일
+   endDate:   일자 없으면 → 해당 월 1일 */
+function _autoFillDay(dateStr, type) {
+  if (!dateStr) return dateStr;
+  const m = dateStr.match(/^(\d{4})\.(\d{2})$/);
+  if (!m) return dateStr; // 이미 일자 있거나 형식 아님
+  const y = +m[1], mo = +m[2];
+  if (type === 'start') {
+    // 말일
+    const lastDay = new Date(y, mo, 0).getDate();
+    return dateStr + '.' + String(lastDay).padStart(2, '0');
+  } else {
+    // 1일
+    return dateStr + '.01';
+  }
 }
 
 function esc(s) {
@@ -2173,7 +2239,7 @@ function clearAll() {
 }
 
 function addEmptyRow(scrollToNew) {
-  projects.push({ name: '', period: '', owner: '', workType: '', field: '', specialty: '', workplace: '', position: '', duty: '', actual: '' });
+  projects.push({ name: '', startDate: '', endDate: '', owner: '', workType: '', field: '', specialty: '', workplace: '', position: '', duty: '', actual: '' });
   renderEditor();
   // 버튼 클릭 시에만 스크롤 + 포커스 (초기화 시에는 스킵)
   if (scrollToNew !== false) {
@@ -2547,7 +2613,25 @@ function _parseDateLoose(s, dayDefault) {
   return { date: new Date(y, mo - 1, d), hadDay: false };
 }
 
-function _parsePeriod(period) {
+function _parsePeriod(period, proj) {
+  // proj가 있으면 startDate/endDate 우선 사용
+  if (proj && (proj.startDate || proj.endDate)) {
+    const sd = proj.startDate || '';
+    const ed = proj.endDate || '';
+    const isOpen = /근무중|현재|진행중/.test(ed);
+    const startInfo = _parseDateLoose(sd, 'start');
+    let endInfo = null;
+    if (ed && !isOpen) endInfo = _parseDateLoose(ed, 'end');
+    return {
+      start: startInfo ? startInfo.date : null,
+      end: endInfo ? endInfo.date : null,
+      isOpen,
+      startHadDay: startInfo ? startInfo.hadDay : false,
+      endHadDay: endInfo ? endInfo.hadDay : false,
+      daysLost: (startInfo && !startInfo.hadDay ? new Date(startInfo.date.getFullYear(), startInfo.date.getMonth(), 0).getDate() - 1 : 0)
+              + (endInfo && !endInfo.hadDay ? new Date(endInfo.date.getFullYear(), endInfo.date.getMonth() + 1, 0).getDate() - 1 : 0)
+    };
+  }
   if (!period) return null;
   const txt = String(period).replace(/\s/g, '');
   const isOpen = /근무중|현재|진행중/.test(txt);
@@ -2601,7 +2685,11 @@ function ruleBasedDiagnosis(p, ctx) {
 
   // ===== Rule 1: 참여기간 일자 누락 =====
   // 본사 근무도 일자 누락은 산정 불이익 → 예외 없이 적용
-  if (p.period && !/\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2}/.test(p.period)) {
+  const _sd = p.startDate || (p.period ? p.period.split('~')[0].trim() : '');
+  const _ed = p.endDate || (p.period ? (p.period.split('~')[1]||'').trim() : '');
+  const _startHasDay = /\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2}/.test(_sd);
+  const _endHasDay = /\d{4}[.\-\/]\d{1,2}[.\-\/]\d{1,2}/.test(_ed) || /근무중|현재/.test(_ed);
+  if ((_sd || _ed) && (!_startHasDay || !_endHasDay)) {
     errors.push('참여기간 일자 누락');
     riskScore += 2;
   }
@@ -3817,6 +3905,8 @@ function mapProject(p) {
   return {
     name:      p.name      || p.프로젝트명 || '',
     period:    p.period    || p.참여기간   || '',
+    startDate: p.startDate || '',
+    endDate:   p.endDate   || '',
     owner:     p.owner     || p.발주자    || '',
     workType:  p.workType  || p.공사종류  || '',
     field:     p.field     || p.직무분야  || '',
@@ -3913,7 +4003,7 @@ function parseLocallyFromText(text) {
 
   projectLines.forEach(({ line, idx }) => {
     const proj = {
-      name: '', period: '', owner: '', workType: '',
+      name: '', period: '', startDate: '', endDate: '', owner: '', workType: '',
       field: '', specialty: '', workplace: '',
       position: '', duty: '', actual: ''
     };
@@ -3921,7 +4011,19 @@ function parseLocallyFromText(text) {
     // 참여기간 추출
     const pm = line.match(periodRe);
     periodRe.lastIndex = 0;
-    if (pm) proj.period = pm[0].replace(/\s+/g, '').replace(/[∼〜]/g, '~');
+    if (pm) {
+      const periodStr = pm[0].replace(/\s+/g, '').replace(/[∼〜]/g, '~');
+      proj.period = periodStr;
+      // startDate / endDate 자동 분리
+      const parts = periodStr.split('~');
+      if (parts.length >= 2) {
+        proj.startDate = _formatDateInput(parts[0].trim());
+        proj.endDate = /근무중|현재|진행중/.test(parts[1]) ? '근무중' : _formatDateInput(parts[1].trim());
+      } else if (parts.length === 1) {
+        proj.startDate = _formatDateInput(parts[0].trim());
+        proj.endDate = '';
+      }
+    }
 
     // 같은 줄 + 다음 줄까지 합쳐서 분석 (정형화 표가 줄바꿈 됨)
     const context = (line + ' ' + (lines[idx + 1] || '')).trim();
