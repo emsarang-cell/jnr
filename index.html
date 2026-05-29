@@ -4151,7 +4151,7 @@ function closeTextInputModal() {
   document.getElementById('text-input-modal').classList.remove('show');
 }
 
-function parseFromTextInput() {
+async function parseFromTextInput() {
   const text = (document.getElementById('text-input-area')?.value || '').trim();
   if (!text) {
     toast('붙여넣을 텍스트가 없습니다.');
