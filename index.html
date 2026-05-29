@@ -1448,7 +1448,8 @@
       <div>
         <div class="eyebrow">분석 결과</div>
         <h2>경력증명서 오류 진단 요약</h2>
-        <div class="sub">각 카드를 클릭하면 상세 분석과 경정신고 문안을 확인할 수 있습니다.</div>
+        <div id="results-person-info" style="display:flex; gap:16px; margin-top:8px; flex-wrap:wrap;"></div>
+        <div class="sub" style="margin-top:6px;">각 카드를 클릭하면 상세 분석과 경정신고 문안을 확인할 수 있습니다.</div>
       </div>
       <div>
         <button class="btn ghost small" onclick="goView('view-input')">← 데이터 수정</button>
@@ -4922,6 +4923,22 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
    RESULTS RENDERING
    ============================================================ */
 function renderResults() {
+  // 대상자 정보 표시
+  const piEl = document.getElementById('results-person-info');
+  if (piEl) {
+    const items = [
+      { label: '성명',   value: personalInfo.name },
+      { label: '분야',   value: personalInfo.field },
+      { label: '전문분야', value: personalInfo.specialty },
+      { label: '등급',   value: personalInfo.grade },
+    ].filter(x => x.value && x.value.trim());
+    piEl.innerHTML = items.map(x =>
+      `<span style="font-size:13px; background:var(--bg-2); border:1px solid var(--line); padding:4px 12px; border-radius:4px; color:var(--ink-2);">
+        <span style="color:var(--muted); font-size:11px; margin-right:4px;">${x.label}</span>${x.value}
+      </span>`
+    ).join('');
+  }
+
   // Summary
   const counts = { 매우높음: 0, 높음: 0, 보통: 0, 낮음: 0 };
   results.forEach(r => { counts[r.경정_필요도] = (counts[r.경정_필요도] || 0) + 1; });
