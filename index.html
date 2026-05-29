@@ -3847,101 +3847,85 @@ async function extractExcelText(file) {
    - 3개씩 병렬 호출 → 전체 합산 → 중복 제거
    ============================================================ */
 async function _extractInfoFromTextChunked(apiKey, fullText, signal, cacheKey) {
-  const CHUNK_SIZE = 28000;   // 청크당 최대 글자 (안정적 파싱 범위)
-  const PARALLEL   = 5;       // 동시 호출 수 (유료 플랜 병렬 최적화)
+  const CHUNK_SIZE = 28000;
+  const PARALLEL   = 5;
 
-  // 페이지 구분자 기준으로 분할 시도 → 없으면 글자수 기준
-  const pagePattern = /
-(?=\s*\(\d+쪽|\d+\s*\/\s*\d+|\[\d+페이지\]|Page\s*\d+)/i;
+  // 페이지 구분자 기준 분할 시도 → 없으면 글자수 기준
+  const pagePattern = /\n(?=\s*\(\d+\uc304|\d+\s*\/\s*\d+|\[\d+\ud398\uc774\uc9c0\]|Page\s*\d+)/i;
   let rawChunks = fullText.split(pagePattern).filter(c => c.trim().length > 50);
 
-  // 페이지 분할이 너무 많거나 없으면 글자수 기준으로
+  // 페이지 분할이 부적절하면 글자수 기준으로 재분할
   if (rawChunks.length <= 1 || rawChunks.some(c => c.length > CHUNK_SIZE * 1.5)) {
     rawChunks = [];
-    const lines = fullText.split('
-');
-    let cur = '';
-    for (const line of lines) {
+    const srcLines = fullText.split("\n");
+    let cur = "";
+    for (const line of srcLines) {
       if (cur.length + line.length > CHUNK_SIZE && cur.length > 200) {
         rawChunks.push(cur.trim());
-        cur = line + '
-';
+        cur = line + "\n";
       } else {
-        cur += line + '
-';
+        cur += line + "\n";
       }
     }
     if (cur.trim().length > 50) rawChunks.push(cur.trim());
   }
 
   const totalChunks = rawChunks.length;
-  console.log(`[chunked] ${totalChunks}개 청크 분할, ${PARALLEL}개씩 병렬 처리`);
-  toast(`📄 대용량 경력증명서 감지 — ${totalChunks}개 구간으로 나눠 분석합니다. 잠시 기다려 주세요...`, 6000);
+  console.log("[chunked] " + totalChunks + "개 청크, " + PARALLEL + "개씩 병렬");
+  toast("\ud83d\udcc4 \ub300\uc6a9\ub7c9 \uacbd\ub825\uc99d\uba85\uc11c \uac10\uc9c0 \u2014 " + totalChunks + "\uac1c \uad6c\uac04\uc73c\ub85c \ub098\ub220 \ubd84\uc11d\ud569\ub2c8\ub2e4...", 6000);
 
   const instructions = getExtractionInstructions();
-  const projectOnly = instructions + '
-
-★중요: 이 구간은 프로젝트 목록만 추출하세요. "기본정보"는 반드시 빈 객체({})로 두세요.';
+  const projectOnly = instructions + "\n\n\u2605\uc911\uc694: \uc774 \uad6c\uac04\uc740 \ud504\ub85c\uc81d\ud2b8 \ubaa9\ub85d\ub9cc \ucd94\ucd9c\ud558\uc138\uc694. \uae30\ubcf8\uc815\ubcf4\ub294 \ube48 \uac1d\uccb4({})\ub85c \ub450\uc138\uc694.";
 
   const merged = { 기본정보: {}, 프로젝트: [] };
   let basicInfoDone = false;
 
-  // PARALLEL개씩 묶어서 순차 처리 (API 부하 분산)
   for (let i = 0; i < totalChunks; i += PARALLEL) {
     if (signal && signal.aborted) break;
-
     const group = rawChunks.slice(i, i + PARALLEL);
     const groupIdx = Math.floor(i / PARALLEL) + 1;
     const totalGroups = Math.ceil(totalChunks / PARALLEL);
-
-    toast(`🔍 분석 중... (${groupIdx}/${totalGroups} 구간)`, 3000);
+    toast("\ud83d\udd0d \ubd84\uc11d \uc911... (" + groupIdx + "/" + totalGroups + " \uad6c\uac04)", 3000);
 
     const tasks = group.map(async (chunk, j) => {
       const isFirst = (i === 0 && j === 0);
       const prompt = isFirst ? instructions : projectOnly;
       try {
         const res = await callAnthropic(apiKey, {
-          model: 'claude-sonnet-4-20250514',
+          model: "claude-sonnet-4-20250514",
           max_tokens: 16000,
-          messages: [{ role: 'user', content: `${prompt}
-
-[경력증명서 텍스트 (${i+j+1}/${totalChunks} 구간)]
-${chunk}` }]
+          messages: [{ role: "user", content: prompt + "\n\n[\uacbd\ub825\uc99d\uba85\uc11c \ud14d\uc2a4\ud2b8 (" + (i+j+1) + "/" + totalChunks + ")]\n" + chunk }]
         }, 0, signal);
         return await parseExtractionResponse(res);
       } catch(e) {
-        console.warn(`[chunk ${i+j+1}] 실패:`, e.message);
+        console.warn("[chunk " + (i+j+1) + "] \uc2e4\ud328:", e.message);
         return null;
       }
     });
 
     const results = await Promise.all(tasks);
-
-    results.forEach((r, j) => {
+    results.forEach((r) => {
       if (!r) return;
-      // 기본정보는 첫 번째 청크에서만
       if (!basicInfoDone && r.기본정보 && Object.keys(r.기본정보).some(k => r.기본정보[k])) {
         merged.기본정보 = r.기본정보;
         basicInfoDone = true;
       }
-      if (Array.isArray(r.프로젝트)) {
-        merged.프로젝트.push(...r.프로젝트);
-      }
+      if (Array.isArray(r.프로젝트)) merged.프로젝트.push(...r.프로젝트);
     });
   }
 
-  // 중복 제거 (프로젝트명 + 시작일 기준)
+  // 중복 제거
   const seen = new Set();
   merged.프로젝트 = merged.프로젝트.filter(p => {
-    const key = (p.name || '').trim() + '|' + (p.startDate || p.period || '').trim();
-    if (!key || key === '|') return true; // 빈 항목은 유지
+    const key = (p.name || "").trim() + "|" + (p.startDate || p.period || "").trim();
+    if (!key || key === "|") return true;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 
-  console.log(`[chunked] 최종: 프로젝트 ${merged.프로젝트.length}건`);
-  toast(`✅ 대용량 분석 완료 — 프로젝트 ${merged.프로젝트.length}건 추출됐습니다.`, 8000);
+  console.log("[chunked] \ucd5c\uc885: \ud504\ub85c\uc81d\ud2b8 " + merged.프로젝트.length + "\uac74");
+  toast("\u2705 \ub300\uc6a9\ub7c9 \ubd84\uc11d \uc644\ub8cc \u2014 \ud504\ub85c\uc81d\ud2b8 " + merged.프로젝트.length + "\uac74 \ucd94\ucd9c\ub410\uc2b5\ub2c8\ub2e4.", 8000);
   _ocrCache.set(cacheKey, merged);
   return merged;
 }
@@ -6080,18 +6064,23 @@ function renderForm4(applied, agg) {
   const TDW = 'border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:9pt;background:#fff;';
 
   // 신청사항 체크박스 (5+5 두 줄)
-  const line1 = ['참여기간','참여사업명','발주자','직무분야','전문분야'].map(opt =>
-    `<label style="margin-right:12px;white-space:nowrap;font-size:9pt;"><input type="checkbox" data-form4="req-${opt}" ${checkedSet.has(opt)?'checked':''}> ${opt}</label>`
-  ).join('');
-  const line2 = ['공사종류','담당업무','공법','직위','기타'].map(opt =>
-    `<label style="margin-right:12px;white-space:nowrap;font-size:9pt;"><input type="checkbox" data-form4="req-${opt}" ${checkedSet.has(opt)?'checked':''}> ${opt}</label>`
-  ).join('');
+  const _mkReq = opt => '<label style="margin-right:12px;white-space:nowrap;font-size:9pt;"><input type="checkbox" data-form4="req-' + opt + '" ' + (checkedSet.has(opt)?'checked':'') + '> ' + opt + '</label>';
+  const line1 = ['참여기간','참여사업명','발주자','직무분야','전문분야'].map(_mkReq).join('');
+  const line2 = ['공사종류','담당업무','공법','직위','기타'].map(_mkReq).join('');
 
   // 관련증빙자료 체크박스
   const docHtml = docOptions.map(d => {
     const checked = d.key === 'doc5' ? (otherDocs.length > 0) : d.match.test(docText);
-    const extra = d.key==='doc5' && checked ? ` : <span class="editable-field" contenteditable="true" data-form4="doc5-text" style="font-size:9pt;">${esc(otherDocs.join(', '))}</span>` : '';
-    return `<label style="display:block;font-size:9pt;line-height:1.9;"><input type="checkbox" data-form4="${d.key}" ${checked?'checked':''}> ${d.label}${extra}</label>`;
+    const extra = d.key==='doc5' && checked ? ' : <span class="editable-field" contenteditable="true" data-form4="doc5-text" style="font-size:9pt;">' + esc(otherDocs.join(', ')) + '</span>' : '';
+    return '<label style="display:block;font-size:9pt;line-height:1.9;"><input type="checkbox" data-form4="' + d.key + '" ' + (checked?'checked':'') + '> ' + d.label + extra + '</label>';
+  }).join('');
+
+  // 수신요청 체크박스 HTML
+  const _recvLabels = ['자택전화','회사전화','휴대전화','문자(휴대전화)','전자우편','문서'];
+  const _recvKeys = ['recv-home','recv-work','recv-mobile','recv-sms','recv-email','recv-doc'];
+  const recvHtml = _recvLabels.map((lbl, i) => {
+    const def = _recvKeys[i] === 'recv-sms' ? 'checked' : '';
+    return '<label style="margin-right:10px;font-size:9pt;white-space:nowrap;"><input type="checkbox" data-form4="' + _recvKeys[i] + '" ' + def + '> ' + lbl + '</label>';
   }).join('');
 
   return `
@@ -6160,13 +6149,7 @@ function renderForm4(applied, agg) {
         <!-- 수신요청 -->
         <tr>
           <th style="${GH}">수신요청</th>
-          <td style="${TD}" colspan="7">
-            ${['자택전화','회사전화','휴대전화','문자(휴대전화)','전자우편','문서'].map((lbl,i) => {
-              const keys = ['recv-home','recv-work','recv-mobile','recv-sms','recv-email','recv-doc'];
-              const def = keys[i]==='recv-sms' ? 'checked' : '';
-              return `<label style="margin-right:10px;font-size:9pt;white-space:nowrap;"><input type="checkbox" data-form4="${keys[i]}" ${def}> ${lbl}</label>`;
-            }).join('')}
-          </td>
+          <td style="${TD}" colspan="7">${recvHtml}</td>
         </tr>
       </table>
 
