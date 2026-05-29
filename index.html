@@ -2261,7 +2261,7 @@ function loadSample() {
 function clearAll() {
   if ((projects.length || personalInfo.name) && !confirm('입력된 모든 데이터(기본정보 포함)를 비웁니다. 계속하시겠습니까?')) return;
   projects = [];
-  personalInfo = { name: '', birthDate: '', field: '', specialty: '', grade: '', certNumber: '', nationalCertNumber: '', address: '', issueDate: '' };
+  personalInfo = { name: '', birthDate: '', field: '', specialty: '', grade: '', gradeTable: [], certNumber: '', nationalCertNumber: '', address: '', issueDate: '' };
   renderEditor();
   renderPersonalInfo();
 }
@@ -2704,9 +2704,6 @@ function ruleBasedDiagnosis(p, ctx) {
   const errors = [];
   const recos = {};
   let riskScore = 0;
-
-  // 디버그: 전문분야 공란 확인
-  console.log('[Rule11 Debug]', p.name?.slice(0,15), '| field:', JSON.stringify(p.field), '| specialty:', JSON.stringify(p.specialty));
 
   // ===== 본사 근무 여부 판별 =====
   // 사례집 전반: 본사 근무 경력은 발주자·공사종류·전문분야·담당업무 공란이 정상.
@@ -3783,6 +3780,11 @@ async function extractInfoFromText(apiKey, rawText, signal) {
 - startDate/endDate는 반드시 추출하세요. "2023.01.15 ~ 2023.12.31" 형태면 startDate="2023.01.15", endDate="2023.12.31"로 분리.
 - 날짜 형식은 YYYY.MM.DD 또는 YYYY.MM으로 통일하세요.
 - 현재 근무 중이면 endDate="근무중"으로 입력하세요.
+- specialty(전문분야)는 경력증명서 원문에 전문분야 항목이 명시된 경우에만 입력하세요. 원문에 없으면 반드시 빈 문자열("")로 두세요. 담당업무·공사종류·직무분야로 추측해서 채우지 마세요.
+- field(직무분야)도 원문에 직무분야 항목이 명시된 경우에만 입력하세요. 없으면 빈 문자열("")로 두세요.
+- 등급 표가 있으면 gradeTable 배열로 추출하세요. 각 행마다 구분(설계·시공 등/건설사업관리/품질관리 등), 직무분야, 전문분야, 등급을 입력하세요.
+- grade 필드에는 대표 등급(특급/고급/중급/초급 중 가장 높은 것) 1개만 입력하세요.
+- 성명에 한자가 병기된 경우(예: 홍길동(洪吉童)) 한글 이름만 추출하세요.
 
 [출력 형식]
 {
@@ -3791,7 +3793,15 @@ async function extractInfoFromText(apiKey, rawText, signal) {
     "생년월일": "",
     "분야": "",
     "전문분야": "",
-    "등급": "",
+    "등급": "대표 등급 1개 (예: 특급)",
+    "gradeTable": [
+      {
+        "구분": "설계·시공 등 또는 건설사업관리 또는 품질관리 등 직무구분명",
+        "직무분야": "토목",
+        "전문분야": "토목시공",
+        "등급": "특급"
+      }
+    ],
     "기술자번호": "",
     "발급일": ""
   },
@@ -3897,11 +3907,12 @@ ${text}`;
 
 function mapBasicInfo(info) {
   return {
-    name:               info.성명               || info.name               || '',
+    name:               (info.성명 || info.name || '').replace(/[（(][\u4E00-\u9FFF·]+[）)]/g, '').trim(),
     birthDate:          info.생년월일            || info.birthDate          || '',
     field:              info.분야               || info.field              || '',
     specialty:          info.전문분야            || info.specialty          || '',
     grade:              info.등급               || info.grade              || '',
+    gradeTable:         Array.isArray(info.gradeTable) ? info.gradeTable : [],
     certNumber:         info.기술자번호          || info.certNumber         || '',
     nationalCertNumber: info.국가기술자격등록번호
                      || info['국가기술자격 등록번호']
@@ -4238,7 +4249,7 @@ function getExtractionInstructions() {
     "생년월일": "",
     "분야": "",
     "전문분야": "",
-    "등급": "",
+    "등급": "등급란 원문 그대로. 여러 분야 등급이 있으면 모두 포함 (예: '토목 특급 / 토목시공 중급 / 안전관리 초급')",
     "기술자번호": "",
     "국가기술자격등록번호": "",
     "주소": "",
@@ -4928,17 +4939,77 @@ function renderResults() {
   // 대상자 정보 표시
   const piEl = document.getElementById('results-person-info');
   if (piEl) {
-    const items = [
-      { label: '성명',   value: personalInfo.name },
-      { label: '분야',   value: personalInfo.field },
-      { label: '전문분야', value: personalInfo.specialty },
-      { label: '등급',   value: personalInfo.grade },
-    ].filter(x => x.value && x.value.trim());
-    piEl.innerHTML = items.map(x =>
-      `<span style="font-size:13px; background:var(--bg-2); border:1px solid var(--line); padding:4px 12px; border-radius:4px; color:var(--ink-2);">
-        <span style="color:var(--muted); font-size:11px; margin-right:4px;">${x.label}</span>${x.value}
-      </span>`
-    ).join('');
+    const badge = (label, value) =>
+      `<span style="font-size:13px;background:var(--bg-2);border:1px solid var(--line);padding:4px 12px;border-radius:4px;color:var(--ink-2);">
+        <span style="color:var(--muted);font-size:11px;margin-right:4px;">${label}</span>${esc(value)}
+      </span>`;
+
+    const basicItems = [
+      personalInfo.name     ? badge('성명', personalInfo.name) : '',
+      personalInfo.field    ? badge('분야', personalInfo.field) : '',
+      personalInfo.specialty? badge('전문분야', personalInfo.specialty) : '',
+      personalInfo.grade    ? badge('등급', personalInfo.grade) : '',
+    ].filter(Boolean).join('');
+
+    // gradeTable 표 렌더링
+    const gt = personalInfo.gradeTable || [];
+    let gradeTableHtml = '';
+    if (gt.length > 0) {
+      // 구분별로 그룹핑
+      const groups = {};
+      gt.forEach(row => {
+        const key = row.구분 || '기타';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(row);
+      });
+
+      const tdStyle = 'padding:5px 10px;border:1px solid var(--line);font-size:12px;text-align:center;';
+      const thStyle = tdStyle + 'background:var(--bg-2);font-weight:600;color:var(--ink-2);';
+      const subThStyle = tdStyle + 'background:var(--bg);font-weight:500;color:var(--muted);font-size:11px;';
+
+      const groupEntries = Object.entries(groups);
+
+      // 헤더 행1: 구분명 (가로로 병렬)
+      let row1 = `<th style="${thStyle}"></th>`; // 빈 첫 셀 (직무분야/전문분야/등급 라벨용)
+      groupEntries.forEach(([구분, rows]) => {
+        row1 += `<th style="${thStyle}" colspan="3">${esc(구분)}</th>`;
+      });
+
+      // 헤더 행2: 직무분야 / 전문분야 / 등급 반복
+      let row2 = `<th style="${subThStyle}"></th>`;
+      groupEntries.forEach(() => {
+        row2 += `<th style="${subThStyle}">직무분야</th><th style="${subThStyle}">전문분야</th><th style="${subThStyle}">등급</th>`;
+      });
+
+      // 최대 행 수
+      const maxRows = Math.max(...groupEntries.map(([,rows]) => rows.length));
+
+      // 데이터 행
+      let dataRows = '';
+      for (let i = 0; i < maxRows; i++) {
+        let row = `<td style="${tdStyle}"></td>`;
+        groupEntries.forEach(([, rows]) => {
+          const r = rows[i] || {};
+          row += `<td style="${tdStyle}">${esc(r.직무분야||'')}</td>
+                  <td style="${tdStyle}">${esc(r.전문분야||'')}</td>
+                  <td style="${tdStyle}font-weight:600;">${esc(r.등급||'')}</td>`;
+        });
+        dataRows += `<tr>${row}</tr>`;
+      }
+
+      gradeTableHtml = `
+        <div style="margin-top:10px;overflow-x:auto;">
+          <table style="border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr>${row1}</tr>
+              <tr>${row2}</tr>
+            </thead>
+            <tbody>${dataRows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    piEl.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;">${basicItems}</div>${gradeTableHtml}`;
   }
 
   // Summary
@@ -5407,7 +5478,7 @@ function restoreAutoSave() {
     const age = Date.now() - (data.savedAtTime || 0);
     if (age < 5 * 60 * 1000) return false; // 너무 최근이면 물어볼 필요 없음
     if (!confirm(`이전에 작업하던 임시저장 데이터가 있습니다.\n\n대상자: ${name}\n프로젝트: ${projectCount}건\n저장일시: ${data.savedAt}\n\n이어서 작업하시겠습니까?`)) return false;
-    personalInfo = data.personalInfo || { name:'', birthDate:'', field:'', specialty:'', grade:'' };
+    personalInfo = data.personalInfo || { name:'', birthDate:'', field:'', specialty:'', grade:'', gradeTable:[] };
     projects = data.projects || [];
     if (projects.length === 0) addEmptyRow(false);
     renderEditor();
@@ -5440,7 +5511,7 @@ function loadFromStorage() {
     const projectCount = (data.projects || []).length;
     const name = data.personalInfo?.name || '(이름 없음)';
     if (!confirm(`저장된 데이터를 불러올까요?\n\n대상자: ${name}\n프로젝트: ${projectCount}건\n저장일시: ${data.savedAt || '알 수 없음'}\n\n현재 입력 중인 데이터는 덮어씌워집니다.`)) return;
-    personalInfo = data.personalInfo || { name:'', birthDate:'', field:'', specialty:'', grade:'' };
+    personalInfo = data.personalInfo || { name:'', birthDate:'', field:'', specialty:'', grade:'', gradeTable:[] };
     projects = data.projects || [];
     if (projects.length === 0) addEmptyRow(false);
     renderEditor();
@@ -5503,7 +5574,7 @@ setTimeout(() => {
     const isEmpty = !personalInfo.name && projects.every(p => !p.name);
     if (isEmpty && projectCount > 0) {
       if (confirm(`이전에 작업하던 임시저장 데이터가 있습니다.\n\n대상자: ${name || '(이름 없음)'}\n프로젝트: ${projectCount}건\n저장일시: ${data.savedAt}\n\n이어서 작업하시겠습니까?`)) {
-        personalInfo = data.personalInfo || { name:'', birthDate:'', field:'', specialty:'', grade:'' };
+        personalInfo = data.personalInfo || { name:'', birthDate:'', field:'', specialty:'', grade:'', gradeTable:[] };
         projects = data.projects || [];
         renderEditor();
         renderPersonalInfo();
