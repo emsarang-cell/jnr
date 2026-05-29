@@ -1338,7 +1338,7 @@
                 <th style="width: 130px;">근무처(소속)</th>
                 <th style="width: 100px;">직위/직책</th>
                 <th style="width: 130px;">담당업무</th>
-                <th style="width: 180px;">실제 수행업무 (선택)</th>
+
                 <th></th>
               </tr>
             </thead>
@@ -2148,7 +2148,6 @@ function renderEditor() {
       <td><input value="${esc(p.workplace)}" data-i="${i}" data-k="workplace"></td>
       <td><input value="${esc(p.position)}" data-i="${i}" data-k="position"></td>
       <td><input value="${esc(p.duty)}" data-i="${i}" data-k="duty"></td>
-      <td><textarea data-i="${i}" data-k="actual" rows="1" placeholder="(선택) 실제 수행업무">${esc(p.actual)}</textarea></td>
       <td class="row-actions"><button class="icon-btn" onclick="removeRow(${i})">✕</button></td>
     `;
     tbody.appendChild(tr);
@@ -2705,6 +2704,9 @@ function ruleBasedDiagnosis(p, ctx) {
   const errors = [];
   const recos = {};
   let riskScore = 0;
+
+  // 디버그: 전문분야 공란 확인
+  console.log('[Rule11 Debug]', p.name?.slice(0,15), '| field:', JSON.stringify(p.field), '| specialty:', JSON.stringify(p.specialty));
 
   // ===== 본사 근무 여부 판별 =====
   // 사례집 전반: 본사 근무 경력은 발주자·공사종류·전문분야·담당업무 공란이 정상.
