@@ -1042,13 +1042,26 @@
     width: 110px; text-align: center;
   }
   .official-form .editable-field {
-    background: #fff8e1; border: 1px dashed #f59e0b;
-    padding: 4px 6px; border-radius: 3px;
-    min-width: 80px; display: inline-block;
-    font-size: 11pt;
+    background: #fffbea; border: 1px dashed #f59e0b;
+    padding: 2px 5px; border-radius: 3px;
+    min-width: 60px; display: inline-block;
+    font-size: inherit;
   }
   .official-form .editable-field:focus {
-    outline: 2px solid #f59e0b; background: white;
+    outline: 2px solid #f59e0b; background: #fff;
+  }
+  .official-form .editable-field:empty::before {
+    content: '클릭하여 입력'; color: #cbb; font-size: 8pt;
+  }
+  @media print {
+    .official-form .editable-field {
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+    }
+    .official-form .editable-field:empty::before {
+      content: '' !important;
+    }
   }
   .official-form .checkbox-row { font-size: 11pt; line-height: 2; }
   .official-form .checkbox-row label {
@@ -5989,7 +6002,7 @@ function renderForm4(applied, agg) {
     if (d.key === 'doc5') {
       const userText = otherDocs.length > 0 ? esc(otherDocs.join(', ')) : '';
       extra = ' : <span class="editable-field" contenteditable="true" data-form4="doc5-text" style="font-size:9pt;">' + userText + '</span>'
-            + '<div style="font-size:7.5pt;color:#999;line-height:1.6;margin-top:2px;padding-left:18px;">(예시) 경력변경신고서 또는 경력증명서(확인용), 4대보험자료 중 택일, 공사(용역)계약서 등 (부도·폐업시 생략), 4대보험자료 중 택일[전체내역], 사유서(본인), 실적증명서, 공사(용역)계약서 등, 사유서(본인,업체), 실적증명서 또는 계약서 등, 작업일보, 기안문 등</div>';
+            + '<div style="font-size:7.5pt;color:#999;line-height:1.6;margin-top:2px;padding-left:18px;">(참고) 4대보험자료 중 택일, 공사(용역)계약서 등 (부도·폐업시 생략), 4대보험자료 중 택일[전체내역], 사유서(본인), 사유서(본인,업체), 실적증명서 또는 계약서 등, 작업일보, 기안문 등</div>';
     }
     return '<label style="display:block;font-size:9pt;line-height:1.9;"><input type="checkbox" data-form4="' + d.key + '" ' + (checked?'checked':'') + '> ' + d.label + extra + '</label>';
   }).join('');
@@ -6003,22 +6016,25 @@ function renderForm4(applied, agg) {
   }).join('');
 
   return `
-    <div id="official-form4" style="font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:9pt;padding:12mm 15mm;max-width:210mm;margin:0 auto;background:#fff;color:#000;">
+    <div class="no-print" style="text-align:right;margin-bottom:10px;display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="printForm4()" style="padding:8px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">🖨️ 이 신청서 인쇄 / PDF 저장</button>
+    </div>
+    <div id="official-form4" class="official-form" style="font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:9pt;padding:12mm 15mm;max-width:210mm;margin:0 auto;background:#fff;color:#000;min-width:auto;">
       <div style="font-size:8pt;margin-bottom:2px;">■ 건설기술인 등급 인정 및 교육·훈련 등에 관한 기준[별지 제4호서식]</div>
       <div style="text-align:center;font-size:14pt;font-weight:700;letter-spacing:8px;margin:5px 0 8px;">신고자료 경정신청서</div>
       <div style="font-size:8pt;margin-bottom:3px;">※ 어두운 칸은 신청인이 적지 않습니다.</div>
 
       <table style="width:100%;border-collapse:collapse;">
-        <!-- 접수 행 -->
+        <!-- 접수 행 (협회 작성란 - 회색) -->
         <tr>
           <th style="${GH}width:55px;">접수번호</th>
-          <td style="${TDW}width:90px;">&nbsp;</td>
+          <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;width:90px;">&nbsp;</td>
           <th style="${GH}">접수일</th>
-          <td style="${TDW}width:90px;">&nbsp;</td>
+          <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;width:90px;">&nbsp;</td>
           <th style="${GH}">실명확인</th>
-          <td style="${TDW}width:90px;">&nbsp;</td>
+          <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;width:90px;">&nbsp;</td>
           <th style="${GH}">처리기간</th>
-          <td style="${TD}text-align:center;width:50px;">10일</td>
+          <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;width:50px;">10일</td>
         </tr>
         <!-- 성명/생년월일 -->
         <tr>
@@ -6111,22 +6127,22 @@ function renderForm4(applied, agg) {
       <!-- 대리신청인 -->
       <table style="width:100%;border-collapse:collapse;margin-top:0;table-layout:fixed;">
         <colgroup>
-          <col style="width:62px;">
-          <col style="width:32px;">
-          <col>
-          <col style="width:48px;">
-          <col>
-          <col style="width:32px;">
+          <col style="width:50px;">
+          <col style="width:28px;">
+          <col style="width:28%;">
+          <col style="width:38px;">
+          <col style="width:24%;">
+          <col style="width:38px;">
           <col>
         </colgroup>
         <tr>
-          <th style="${GH}font-size:8pt;padding:5px 2px;">대리<br>신청인</th>
-          <th style="${GH}font-size:8.5pt;">성명</th>
-          <td style="${TD}"><span class="editable-field" contenteditable="true" data-form4="agent-name" style="font-size:9pt;min-width:60px;"></span> <span style="font-size:7pt;color:#aaa;">(서명/인)</span></td>
-          <th style="${GH}font-size:8pt;padding:5px 2px;">생년<br>월일</th>
-          <td style="${TD}"><span class="editable-field" contenteditable="true" data-form4="agent-birth" style="font-size:9pt;min-width:70px;"></span></td>
-          <th style="${GH}font-size:8.5pt;">연락처</th>
-          <td style="${TD}"><span class="editable-field" contenteditable="true" data-form4="agent-tel" style="font-size:9pt;min-width:70px;"></span></td>
+          <th style="${GH}font-size:7.5pt;padding:5px 1px;">대리<br>신청인</th>
+          <th style="${GH}font-size:8pt;padding:4px 1px;">성명</th>
+          <td style="${TD}padding:4px 6px;"><span class="editable-field" contenteditable="true" data-form4="agent-name" style="font-size:9pt;min-width:80px;"></span></td>
+          <th style="${GH}font-size:7.5pt;padding:5px 1px;">생년<br>월일</th>
+          <td style="${TD}padding:4px 6px;"><span class="editable-field" contenteditable="true" data-form4="agent-birth" style="font-size:9pt;min-width:80px;"></span></td>
+          <th style="${GH}font-size:7.5pt;padding:5px 1px;">연락처</th>
+          <td style="${TD}padding:4px 6px;"><span class="editable-field" contenteditable="true" data-form4="agent-tel" style="font-size:9pt;min-width:90px;"></span></td>
         </tr>
       </table>
       <div style="text-align:right;font-size:7.5pt;color:#555;margin-top:3px;">210㎜×297㎜[일반용지 60g/㎡(재활용품)]</div>
@@ -6503,6 +6519,12 @@ function attachFormEditHandlers() {
 /* ============================================================
    인쇄 / PDF 출력
    ============================================================ */
+// 별지 제4호만 인쇄/PDF (form4 탭으로 전환 후 인쇄)
+function printForm4() {
+  switchFormTab('form4');
+  setTimeout(() => printCurrentForm(), 100);
+}
+
 function printCurrentForm() {
   const tabMap = {
     'form4': '별지 제4호',
