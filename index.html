@@ -6175,12 +6175,14 @@ function renderForm4(applied, agg) {
       <div style="text-align:right;font-size:9pt;margin:6px 20px 4px 0;">
         ${yyyy} 년 &nbsp; ${mm} 월 &nbsp; ${dd} 일
       </div>
-      <div style="font-size:9pt;margin:6px 0;display:flex;justify-content:center;align-items:center;gap:60px;">
+      <div style="font-size:9pt;margin:6px 0;display:flex;justify-content:center;align-items:center;gap:20px;">
         <span>신청인(본인)</span>
-        <span style="border-bottom:1px solid #000;width:140px;display:inline-block;">&nbsp;</span>
+        <span class="editable-field" contenteditable="true" data-form4="signer-name" style="font-size:9pt;min-width:90px;text-align:center;">${esc(pi.name||'')}</span>
         <span style="font-size:7.5pt;color:#888;">(서명 또는 인)</span>
       </div>
-      <div style="font-size:10pt;font-weight:700;margin:10px 0 8px;">○○○○○ 협회장 귀하</div>
+      <div style="font-size:10pt;font-weight:700;margin:10px 0 8px;">
+        <span class="editable-field" contenteditable="true" data-form4="assoc-name" style="font-size:10pt;font-weight:700;min-width:90px;">○○○○○</span> 협회장 귀하
+      </div>
 
       <!-- 첨부서류/수수료 -->
       <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
