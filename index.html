@@ -3819,6 +3819,8 @@ async function extractPdfText(file) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
+    // 페이지 구분자 삽입 → 청크 분할 시 페이지 경계 존중
+    text += `\n(${i}쪽 / ${pdf.numPages}쪽)\n`;
     text += content.items.map(it => it.str).join(' ') + '\n\n';
   }
   return text;
@@ -3836,14 +3838,125 @@ async function extractExcelText(file) {
   return text;
 }
 
+/* ============================================================
+   대용량 경력증명서 청크 분할 추출 (20매+ 지원)
+   - 페이지 구분자 또는 글자수 기준으로 청크 분할
+   - 3개씩 병렬 호출 → 전체 합산 → 중복 제거
+   ============================================================ */
+async function _extractInfoFromTextChunked(apiKey, fullText, signal, cacheKey) {
+  const CHUNK_SIZE = 28000;   // 청크당 최대 글자 (안정적 파싱 범위)
+  const PARALLEL   = 5;       // 동시 호출 수 (유료 플랜 병렬 최적화)
+
+  // 페이지 구분자 기준으로 분할 시도 → 없으면 글자수 기준
+  const pagePattern = /
+(?=\s*\(\d+쪽|\d+\s*\/\s*\d+|\[\d+페이지\]|Page\s*\d+)/i;
+  let rawChunks = fullText.split(pagePattern).filter(c => c.trim().length > 50);
+
+  // 페이지 분할이 너무 많거나 없으면 글자수 기준으로
+  if (rawChunks.length <= 1 || rawChunks.some(c => c.length > CHUNK_SIZE * 1.5)) {
+    rawChunks = [];
+    const lines = fullText.split('
+');
+    let cur = '';
+    for (const line of lines) {
+      if (cur.length + line.length > CHUNK_SIZE && cur.length > 200) {
+        rawChunks.push(cur.trim());
+        cur = line + '
+';
+      } else {
+        cur += line + '
+';
+      }
+    }
+    if (cur.trim().length > 50) rawChunks.push(cur.trim());
+  }
+
+  const totalChunks = rawChunks.length;
+  console.log(`[chunked] ${totalChunks}개 청크 분할, ${PARALLEL}개씩 병렬 처리`);
+  toast(`📄 대용량 경력증명서 감지 — ${totalChunks}개 구간으로 나눠 분석합니다. 잠시 기다려 주세요...`, 6000);
+
+  const instructions = getExtractionInstructions();
+  const projectOnly = instructions + '
+
+★중요: 이 구간은 프로젝트 목록만 추출하세요. "기본정보"는 반드시 빈 객체({})로 두세요.';
+
+  const merged = { 기본정보: {}, 프로젝트: [] };
+  let basicInfoDone = false;
+
+  // PARALLEL개씩 묶어서 순차 처리 (API 부하 분산)
+  for (let i = 0; i < totalChunks; i += PARALLEL) {
+    if (signal && signal.aborted) break;
+
+    const group = rawChunks.slice(i, i + PARALLEL);
+    const groupIdx = Math.floor(i / PARALLEL) + 1;
+    const totalGroups = Math.ceil(totalChunks / PARALLEL);
+
+    toast(`🔍 분석 중... (${groupIdx}/${totalGroups} 구간)`, 3000);
+
+    const tasks = group.map(async (chunk, j) => {
+      const isFirst = (i === 0 && j === 0);
+      const prompt = isFirst ? instructions : projectOnly;
+      try {
+        const res = await callAnthropic(apiKey, {
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 16000,
+          messages: [{ role: 'user', content: `${prompt}
+
+[경력증명서 텍스트 (${i+j+1}/${totalChunks} 구간)]
+${chunk}` }]
+        }, 0, signal);
+        return await parseExtractionResponse(res);
+      } catch(e) {
+        console.warn(`[chunk ${i+j+1}] 실패:`, e.message);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(tasks);
+
+    results.forEach((r, j) => {
+      if (!r) return;
+      // 기본정보는 첫 번째 청크에서만
+      if (!basicInfoDone && r.기본정보 && Object.keys(r.기본정보).some(k => r.기본정보[k])) {
+        merged.기본정보 = r.기본정보;
+        basicInfoDone = true;
+      }
+      if (Array.isArray(r.프로젝트)) {
+        merged.프로젝트.push(...r.프로젝트);
+      }
+    });
+  }
+
+  // 중복 제거 (프로젝트명 + 시작일 기준)
+  const seen = new Set();
+  merged.프로젝트 = merged.프로젝트.filter(p => {
+    const key = (p.name || '').trim() + '|' + (p.startDate || p.period || '').trim();
+    if (!key || key === '|') return true; // 빈 항목은 유지
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  console.log(`[chunked] 최종: 프로젝트 ${merged.프로젝트.length}건`);
+  toast(`✅ 대용량 분석 완료 — 프로젝트 ${merged.프로젝트.length}건 추출됐습니다.`, 8000);
+  _ocrCache.set(cacheKey, merged);
+  return merged;
+}
+
 async function extractInfoFromText(apiKey, rawText, signal) {
-  const text = rawText.length > 80000 ? rawText.slice(0, 80000) : rawText;
+  const text = rawText; // 한도 없음 - 청크 분할로 처리
 
   // OCR 캐싱: 같은 텍스트 재추출 방지
   const cacheKey = 'ocr-text:' + hashString(text);
   if (_ocrCache.has(cacheKey)) {
     trackCacheHit();
     return _ocrCache.get(cacheKey);
+  }
+
+  // 텍스트가 길면 청크로 나눠 병렬 호출 후 합치기 (잘림 방지)
+  const CHUNK_LIMIT = 20000; // 이 이상이면 청크 분할
+  if (text.length > CHUNK_LIMIT) {
+    return await _extractInfoFromTextChunked(apiKey, text, signal, cacheKey);
   }
 
   // 로컬 파싱 (AI 실패 시 fallback용으로만 사용)
@@ -4462,7 +4575,7 @@ async function parseExtractionResponse(res) {
     console.warn('[parseExtractionResponse] 응답이 잘려 자동 복구됨. 일부 프로젝트가 누락됐을 수 있습니다.');
     // 사용자에게 토스트로 안내 (한 번만)
     if (typeof toast === 'function') {
-      toast('⚠ 응답이 길어 일부 잘렸습니다. 누락된 프로젝트가 있으면 수동 추가해 주세요.', 5000);
+      toast('⚠️ 경력 항목이 많아 일부가 잘렸습니다.\n아래 표에서 누락된 프로젝트를 확인하고 직접 추가해 주세요.\n(+ 행 추가 버튼 활용)', 12000);
     }
     return parsed;
   } catch (err) {
@@ -4538,7 +4651,7 @@ async function extractInfoFromImage(apiKey, file, signal) {
 
   const res = await callAnthropic(apiKey, {
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 8000,
+    max_tokens: 32000,
     messages: [{
       role: 'user',
       content: [
@@ -4563,7 +4676,7 @@ async function extractInfoFromPdfBinary(apiKey, file, signal) {
 
   const res = await callAnthropic(apiKey, {
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 8000,
+    max_tokens: 32000,
     messages: [{
       role: 'user',
       content: [
