@@ -1055,6 +1055,18 @@
     display: inline-block; margin-right: 16px; cursor: pointer;
     padding: 2px 0;
   }
+  .official-form input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none;
+    width: 13px; height: 13px;
+    border: 1px solid #000; background: #fff;
+    display: inline-block; vertical-align: middle;
+    position: relative; cursor: pointer;
+    margin-right: 2px;
+  }
+  .official-form input[type="checkbox"]:checked::after {
+    content: '✔'; font-size: 10px; color: #000;
+    position: absolute; top: -2px; left: 1px; line-height: 1;
+  }
   .official-form .checkbox-row input[type="checkbox"] {
     transform: scale(1.2); margin-right: 6px; cursor: pointer;
   }
@@ -1553,23 +1565,31 @@
 
 <!-- ====== UPLOAD MODAL ====== -->
 <div class="modal-bg" id="upload-modal" style="z-index: 110;">
-  <div class="modal" style="max-width: 480px;">
-    <div class="modal-head" style="padding-bottom: 20px;">
+  <div class="modal" style="max-width: 520px;">
+    <div class="modal-head" style="padding-bottom: 16px;">
       <div style="flex:1;">
         <div class="eyebrow" style="margin-bottom: 8px;">파일 분석</div>
         <h2 class="serif" style="font-size: 22px;">경력증명서를 분석하고 있습니다</h2>
-        <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">파일에서 기본정보와 프로젝트를 자동 추출합니다.</div>
+        <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">AI가 파일에서 기본정보와 프로젝트를 자동 추출합니다.</div>
       </div>
       <button class="modal-close" onclick="cancelUpload()" title="업로드 취소">✕</button>
     </div>
-    <div class="modal-body" style="padding: 24px 32px 28px;">
+    <div class="modal-body" style="padding: 20px 32px 24px;">
       <ul class="upload-steps" id="upload-steps">
         <li class="us-item" data-step="1"><span class="us-dot"></span><span>파일 읽기</span><span class="us-state">대기</span></li>
         <li class="us-item" data-step="2"><span class="us-dot"></span><span>내용 분석</span><span class="us-state">대기</span></li>
         <li class="us-item" data-step="3"><span class="us-dot"></span><span>AI 정보 구조화</span><span class="us-state">대기</span></li>
         <li class="us-item" data-step="4"><span class="us-dot"></span><span>폼에 자동 입력</span><span class="us-state">대기</span></li>
       </ul>
-      <div style="text-align: center; margin-top: 16px;">
+
+      <!-- 명언 슬라이드 -->
+      <div id="quote-slide" style="margin-top:20px;padding:18px 20px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:10px;border-left:3px solid var(--accent);min-height:90px;display:flex;flex-direction:column;justify-content:center;transition:opacity 0.6s ease;">
+        <div id="quote-text" style="font-size:13.5px;color:var(--ink-2);line-height:1.75;font-style:italic;"></div>
+        <div id="quote-author" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:right;"></div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:5px;margin-top:10px;" id="quote-dots"></div>
+
+      <div style="text-align: center; margin-top: 14px;">
         <button class="btn ghost small" onclick="cancelUpload()" style="font-size: 12px; color: var(--muted);">
           ✕ 업로드 취소
         </button>
@@ -3527,6 +3547,74 @@ async function handleImportRules(event) {
    FILE UPLOAD & AUTO-EXTRACTION
    ============================================================ */
 let _uploadCurStep = 0;
+/* ============================================================
+   명언 슬라이드 (업로드 대기 중)
+   ============================================================ */
+const _QUOTES = [
+  { text: "성공은 최종 목적지가 아니고, 실패는 치명적인 것이 아니다. 중요한 것은 계속하는 용기다.", author: "윈스턴 처칠" },
+  { text: "당신이 할 수 있다고 믿든, 할 수 없다고 믿든 — 어느 쪽이든 당신이 옳다.", author: "헨리 포드" },
+  { text: "천 리 길도 한 걸음부터.", author: "노자" },
+  { text: "오늘 할 수 있는 일을 내일로 미루지 마라.", author: "벤자민 프랭클린" },
+  { text: "가장 어두운 밤도 끝나고 해는 뜬다.", author: "빅토르 위고" },
+  { text: "작은 진전도 진전이다. 멈추지 않는 한 얼마나 느리게 가는지는 중요치 않다.", author: "공자" },
+  { text: "노력 없이는 아무것도 피어나지 않는다.", author: "소포클레스" },
+  { text: "삶이 있는 한 희망은 있다.", author: "마르쿠스 툴리우스 키케로" },
+  { text: "경험은 가장 좋은 스승이지만, 수업료가 비싸다.", author: "토마스 칼라일" },
+  { text: "자신을 믿어라. 당신의 능력을 믿어라. 겸손하고 합리적인 자신감 없이는 성공도 행복도 없다.", author: "노먼 빈센트 필" },
+  { text: "당신의 시간은 한정되어 있다. 그러니 다른 사람의 삶을 살며 낭비하지 마라.", author: "스티브 잡스" },
+  { text: "결과를 두려워하지 말고, 시도하지 않는 것을 두려워하라.", author: "리처드 브랜슨" },
+  { text: "오늘의 노력이 내일의 나를 만든다.", author: "한국 속담" },
+  { text: "위대한 업적은 한 번에 이루어지지 않는다. 하루하루 쌓인 작은 노력들이 만들어 낸다.", author: "빈센트 반 고흐" },
+  { text: "정직과 성실함은 결코 낡지 않는다.", author: "앤드류 카네기" },
+];
+
+let _quoteTimer = null;
+let _quoteCurrent = 0;
+let _quoteShuffled = [];
+
+function _shuffleQuotes() {
+  _quoteShuffled = [..._QUOTES].sort(() => Math.random() - 0.5);
+}
+
+function _showQuote(idx) {
+  const q = _quoteShuffled[idx % _quoteShuffled.length];
+  const el = document.getElementById('quote-text');
+  const au = document.getElementById('quote-author');
+  const slide = document.getElementById('quote-slide');
+  const dots = document.getElementById('quote-dots');
+  if (!el || !au) return;
+
+  // 페이드 아웃
+  if (slide) slide.style.opacity = '0';
+  setTimeout(() => {
+    el.textContent = `"${q.text}"`;
+    au.textContent = `— ${q.author}`;
+    if (slide) slide.style.opacity = '1';
+  }, 300);
+
+  // 도트 업데이트 (최대 5개)
+  if (dots) {
+    const total = Math.min(5, _quoteShuffled.length);
+    dots.innerHTML = Array.from({length: total}, (_, i) =>
+      `<span style="width:6px;height:6px;border-radius:50%;background:${i === idx % total ? 'var(--accent)' : 'var(--line-2)'};display:inline-block;transition:background 0.3s;"></span>`
+    ).join('');
+  }
+}
+
+function startQuoteSlide() {
+  _shuffleQuotes();
+  _quoteCurrent = 0;
+  _showQuote(0);
+  _quoteTimer = setInterval(() => {
+    _quoteCurrent++;
+    _showQuote(_quoteCurrent);
+  }, 4000);
+}
+
+function stopQuoteSlide() {
+  if (_quoteTimer) { clearInterval(_quoteTimer); _quoteTimer = null; }
+}
+
 function showUploadModal() {
   _uploadCurStep = 0;
   document.querySelectorAll('#upload-modal .us-item').forEach(el => {
@@ -3539,10 +3627,12 @@ function showUploadModal() {
   setUploadStepLabel(3, 'AI 정보 구조화');
   setUploadStepLabel(4, '폼에 자동 입력');
   document.getElementById('upload-modal').classList.add('show');
+  startQuoteSlide();
   document.body.style.overflow = 'hidden';
 }
 function hideUploadModal() {
   document.getElementById('upload-modal').classList.remove('show');
+  stopQuoteSlide();
   document.body.style.overflow = '';
 }
 function setUploadStep(n, state) {
@@ -4427,7 +4517,7 @@ async function extractInfoFromImage(apiKey, file, signal) {
 
   const res = await callAnthropic(apiKey, {
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 32000,
+    max_tokens: 8000,
     messages: [{
       role: 'user',
       content: [
@@ -4452,7 +4542,7 @@ async function extractInfoFromPdfBinary(apiKey, file, signal) {
 
   const res = await callAnthropic(apiKey, {
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 32000,
+    max_tokens: 8000,
     messages: [{
       role: 'user',
       content: [
