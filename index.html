@@ -2194,21 +2194,37 @@ function renderEditor() {
    출력: 'YYYY.MM' 또는 'YYYY.MM.DD'
    일자 없으면 startDate는 말일, endDate는 1일로 자동 보완 (blur 후 렌더 시) */
 function _formatDateInput(raw) {
-  // 숫자와 구분자만 추출
-  const digits = raw.replace(/[^0-9]/g, '');
-  if (digits.length < 6) return raw; // 너무 짧으면 그대로
+  return _safeFormatDate(raw);
+}
 
-  const y = digits.slice(0, 4);
-  const m = digits.slice(4, 6);
-  const d = digits.slice(6, 8);
-
-  if (!y || !m) return raw;
-  const mo = String(+m).padStart(2, '0');
-  if (d) {
-    const day = String(+d).padStart(2, '0');
-    return y + '.' + mo + '.' + day;
+// 날짜 문자열 정규화: 다양한 구분자/형태 → YYYY.MM 또는 YYYY.MM.DD
+function _safeFormatDate(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  if (!s) return '';
+  // 이미 올바른 형식이면 그대로
+  if (/^\d{4}\.\d{2}\.\d{2}$/.test(s)) return s;
+  if (/^\d{4}\.\d{2}$/.test(s)) return s;
+  // 구분자 포함 날짜 파싱: 2023-01-15, 2023/01/15, 20230115 등
+  const m = s.match(/^(\d{4})[.\-\/년](\d{1,2})(?:[.\-\/월](\d{1,2}))?/);
+  if (m) {
+    const y = m[1];
+    const mo = String(+m[2]).padStart(2, '0');
+    if (m[3]) {
+      const d = String(+m[3]).padStart(2, '0');
+      return y + '.' + mo + '.' + d;
+    }
+    return y + '.' + mo;
   }
-  return y + '.' + mo;
+  // 숫자만: 20230115 → 2023.01.15, 202301 → 2023.01
+  const digits = s.replace(/[^0-9]/g, '');
+  if (digits.length >= 8) {
+    return digits.slice(0,4) + '.' + digits.slice(4,6) + '.' + digits.slice(6,8);
+  }
+  if (digits.length === 6) {
+    return digits.slice(0,4) + '.' + digits.slice(4,6);
+  }
+  return s; // 변환 불가 → 원본 유지
 }
 
 /* 시작일/종료일에서 일자 누락 시 자동 보완
@@ -2845,13 +2861,13 @@ function ruleBasedDiagnosis(p, ctx) {
   if (!isHonsa) {
     if (noField && noSpec) {
       errors.push('직무분야/전문분야 공란');
-      riskScore += 3;
+      riskScore += 4;  // 높음
     } else if (noField) {
       errors.push('직무분야 공란');
-      riskScore += 2;
+      riskScore += 2;  // 보통
     } else if (noSpec) {
       errors.push('전문분야 공란');
-      riskScore += 1;
+      riskScore += 2;  // 보통 (기존 1 → 2로 상향)
     }
   } else {
     // 본사: 직무분야만 없으면 낮은 수준으로 안내 (전문분야 공란은 정상)
@@ -3761,6 +3777,9 @@ async function extractInfoFromText(apiKey, rawText, signal) {
 - 표 형태로 정리된 경우 각 행을 하나의 프로젝트로 추출합니다.
 - 텍스트의 모든 프로젝트를 누락 없이 추출하세요.
 - 생년월일이 마스킹된 경우("******" 등) 그대로 유지합니다.
+- startDate/endDate는 반드시 추출하세요. "2023.01.15 ~ 2023.12.31" 형태면 startDate="2023.01.15", endDate="2023.12.31"로 분리.
+- 날짜 형식은 YYYY.MM.DD 또는 YYYY.MM으로 통일하세요.
+- 현재 근무 중이면 endDate="근무중"으로 입력하세요.
 
 [출력 형식]
 {
@@ -3906,14 +3925,33 @@ function mapProject(p) {
   const _period = p.period || p.참여기간 || '';
   let _startDate = p.startDate || '';
   let _endDate   = p.endDate   || '';
-  if (_period && (!_startDate || !_endDate)) {
-    const _parts = _period.replace(/\s/g,'').split(/[~∼〜]/);
-    if (_parts.length >= 2) {
-      if (!_startDate) _startDate = _formatDateInput(_parts[0].trim());
-      if (!_endDate)   _endDate   = /근무중|현재|진행중/.test(_parts[1]) ? '근무중' : _formatDateInput(_parts[1].trim());
-    } else if (_parts.length === 1 && !_startDate) {
-      _startDate = _formatDateInput(_parts[0].trim());
+
+  // AI가 startDate/endDate를 직접 줬으면 그대로, 아니면 period에서 분리
+  if (!_startDate || !_endDate) {
+    // period 또는 참여기간에서 시도
+    const src = _period || '';
+    if (src) {
+      // 구분자: ~, ∼, 〜, -, ~, /, 공백~공백 등
+      const _parts = src.split(/\s*[~∼〜]\s*/);
+      if (_parts.length >= 2) {
+        if (!_startDate) _startDate = _safeFormatDate(_parts[0].trim());
+        if (!_endDate)   _endDate   = /근무중|현재|진행중/.test(_parts[1]) ? '근무중' : _safeFormatDate(_parts[1].trim());
+      } else {
+        // 구분자 없이 날짜 두 개가 공백으로 구분된 경우
+        const dateRe = /\d{4}[.\-\/]\d{1,2}(?:[.\-\/]\d{1,2})?/g;
+        const matches = src.match(dateRe);
+        if (matches && matches.length >= 2) {
+          if (!_startDate) _startDate = _safeFormatDate(matches[0]);
+          if (!_endDate)   _endDate   = _safeFormatDate(matches[1]);
+        } else if (matches && matches.length === 1 && !_startDate) {
+          _startDate = _safeFormatDate(matches[0]);
+        }
+      }
     }
+  } else {
+    // 이미 있는 경우도 포맷 정규화
+    _startDate = _safeFormatDate(_startDate);
+    if (_endDate !== '근무중') _endDate = _safeFormatDate(_endDate);
   }
   return {
     name:      p.name      || p.프로젝트명 || '',
@@ -4966,9 +5004,11 @@ function deleteFilteredResults() {
 function renderResultList() {
   const wrap = document.getElementById('results-list');
   wrap.innerHTML = '';
+  const _riskOrder = { '매우높음': 0, '높음': 1, '보통': 2, '낮음': 3 };
   const items = results
     .map((r, i) => ({ r, i }))
-    .filter(x => currentFilter === 'all' || x.r.경정_필요도 === currentFilter);
+    .filter(x => currentFilter === 'all' || x.r.경정_필요도 === currentFilter)
+    .sort((a, b) => (_riskOrder[a.r.경정_필요도] ?? 4) - (_riskOrder[b.r.경정_필요도] ?? 4));
 
   if (items.length === 0) {
     wrap.innerHTML = '<div style="padding: 60px; text-align: center; color: var(--muted); border: 1px dashed var(--line);">해당 위험도의 프로젝트가 없습니다.</div>';
