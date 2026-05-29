@@ -1101,6 +1101,7 @@
   }
 
   /* ====== PRINT ====== */
+  .no-print { display: none !important; }
   @media print {
     body { background: white; }
     .topbar, .report-bar, .footnote, .forms-bar,
@@ -1500,7 +1501,7 @@
 
   <!-- ====== VIEW 5: APPLICATION FORMS (경정 신청서 자동 생성) ====== -->
   <section class="view" id="view-forms">
-    <div class="forms-bar">
+    <div class="forms-bar no-print">
       <button class="btn ghost small" onclick="goView('view-results')">← 결과 화면으로</button>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn small" onclick="printCurrentForm()">🖨️ 현재 탭 인쇄/PDF</button>
@@ -1508,19 +1509,11 @@
       </div>
     </div>
 
-    <div class="section-head" style="margin-bottom:20px;">
-      <div>
-        <div class="eyebrow">경정 신청서 자동 생성</div>
-        <h2>제출용 서식 4종</h2>
-        <div class="sub">사례집(2024.12.27)을 기반으로 자동 작성된 서식입니다. 모든 항목은 직접 수정 가능합니다.</div>
-      </div>
-    </div>
-
-    <!-- 신청서 요약 정보 -->
-    <div id="forms-summary" class="forms-summary"></div>
+    <!-- 신청서 요약 정보 (인쇄 시 숨김) -->
+    <div id="forms-summary" class="forms-summary no-print"></div>
 
     <!-- 탭 메뉴 -->
-    <div class="forms-tabs" id="forms-tabs">
+    <div class="forms-tabs no-print" id="forms-tabs">
       <button class="form-tab on" data-tab="form4">📄 별지 제4호 (신고자료 경정신청서)</button>
       <button class="form-tab" data-tab="form14">📄 별지 제14호 (경력변경신고서)</button>
       <button class="form-tab" data-tab="letter-personal">✍️ 사유서 (본인)</button>
@@ -1533,10 +1526,7 @@
     <div class="form-panel" id="form-panel-letter-personal" style="display:none;"></div>
     <div class="form-panel" id="form-panel-letter-company" style="display:none;"></div>
 
-    <div class="footnote" style="margin-top:24px;">
-      ⚠️ 본 서식은 사례집 양식을 재현한 것이며, 실제 협회 제출 시에는 한국건설기술인협회 공식 양식을 사용하시기 바랍니다.
-      서명·날인란은 인쇄 후 본인이 직접 작성·날인해야 합니다.
-    </div>
+
   </section>
 
 </main>
@@ -3620,7 +3610,8 @@ async function handleFile(event) {
         setUploadStep(2, 'done');
         setUploadStepLabel(3, 'AI 정보 구조화');
         setUploadStep(3, 'active');
-        extracted = await extractInfoFromText(apiKey, text, signal);
+        _lastRawText = text;
+      extracted = await extractInfoFromText(apiKey, text, signal);
         setUploadStep(3, 'done');
       } else {
         setUploadStepLabel(2, '스캔 PDF 감지 · Vision OCR로 전환');
@@ -3640,6 +3631,7 @@ async function handleFile(event) {
       setUploadStep(2, 'done');
       setUploadStepLabel(3, 'AI 정보 구조화');
       setUploadStep(3, 'active');
+      _lastRawText = text;
       extracted = await extractInfoFromText(apiKey, text, signal);
       setUploadStep(3, 'done');
 
@@ -3651,6 +3643,7 @@ async function handleFile(event) {
       setUploadStep(2, 'done');
       setUploadStepLabel(3, 'AI 정보 구조화');
       setUploadStep(3, 'active');
+      _lastRawText = text;
       extracted = await extractInfoFromText(apiKey, text, signal);
       setUploadStep(3, 'done');
 
@@ -3666,6 +3659,7 @@ async function handleFile(event) {
     }
     if (extracted && Array.isArray(extracted.프로젝트) && extracted.프로젝트.length) {
       projects = extracted.프로젝트.map(mapProject);
+      _cleanSpecialtyIfFake(projects, _lastRawText);
       renderEditor();
     }
     await sleep(400);
@@ -3934,6 +3928,46 @@ function mapBasicInfo(info) {
   };
 }
 
+/* 전문분야 허위 채움 감지 후 제거
+   경력증명서에 전문분야 컬럼이 없는 경우 AI가 담당업무/직무분야에서 추측해 채우는 문제 방지.
+   감지 기준:
+   1) 모든 프로젝트 specialty가 동일한 값 → AI가 일괄 추측한 것
+   2) specialty 값이 원문 텍스트에 "전문분야" 컬럼 형태로 존재하지 않는 경우
+   3) specialty가 담당업무(duty)와 동일하거나 포함 관계인 경우 → 추측값 */
+function _cleanSpecialtyIfFake(projs, rawText) {
+  if (!projs || projs.length === 0) return;
+
+  // 원문에 "전문분야" 컬럼이 실제로 있는지 확인
+  const hasSpecialtyCol = /전문\s*분야/.test(rawText);
+  if (!hasSpecialtyCol) {
+    // 전문분야 컬럼 자체가 없는 경우 → 모두 제거
+    projs.forEach(p => { p.specialty = ''; });
+    console.log('[cleanSpecialty] 원문에 전문분야 컬럼 없음 → specialty 전체 제거');
+    return;
+  }
+
+  // 컬럼은 있지만 모든 프로젝트 specialty가 동일값 → AI 일괄 추측 의심
+  const specs = projs.map(p => (p.specialty || '').trim()).filter(Boolean);
+  if (specs.length === projs.length && new Set(specs).size === 1) {
+    // 단 하나의 값으로 모두 동일 → 제거
+    projs.forEach(p => { p.specialty = ''; });
+    console.log('[cleanSpecialty] 모든 specialty 동일값 → 제거');
+    return;
+  }
+
+  // specialty가 duty와 동일하거나 duty에서 파생된 경우 개별 제거
+  projs.forEach(p => {
+    if (!p.specialty) return;
+    const spec = p.specialty.trim();
+    const duty = (p.duty || '').trim();
+    if (!spec) return;
+    // duty와 동일하거나, duty가 spec을 포함하거나, spec이 duty를 포함
+    if (duty && (spec === duty || duty.includes(spec) || spec.includes(duty))) {
+      p.specialty = '';
+    }
+  });
+}
+
 function mapProject(p) {
   // period에서 startDate/endDate 자동 분리
   const _period = p.period || p.참여기간 || '';
@@ -4197,6 +4231,7 @@ async function parseFromTextInput() {
     }
     if (parsed && Array.isArray(parsed.프로젝트) && parsed.프로젝트.length) {
       projects = parsed.프로젝트.map(mapProject);
+      _cleanSpecialtyIfFake(projects, text);
       renderEditor();
     }
 
@@ -5780,132 +5815,164 @@ function renderFormsSummary(applied, agg) {
 function renderForm4(applied, agg) {
   const pi = personalInfo;
 
-  // 신청사항 체크박스 (10개)
   const allOptions = ['참여기간', '참여사업명', '발주자', '직무분야', '전문분야', '공사종류', '담당업무', '공법', '직위', '기타'];
   const checkedSet = new Set(agg.신청사항);
-  const reqRow = allOptions.map(opt =>
-    `<label><input type="checkbox" data-form4="req-${opt}" ${checkedSet.has(opt) ? 'checked' : ''}> ${opt}</label>`
-  ).join('');
 
-  // 관련증빙자료 체크박스 (5개) - 사례집의 필수 서류 자동 체크
   const docOptions = [
-    { key: 'doc1', label: '건설기술인 경력변경신고서(별지 제14호서식)', match: /경력변경신고서/ },
-    { key: 'doc2', label: '경력확인서(별지 제12호서식)', match: /경력확인서$|^경력확인서/ },
-    { key: 'doc3', label: '국외 경력확인서(별지 제13호서식)', match: /국외경력확인서/ },
-    { key: 'doc4', label: '경력확인서 확인업체의 인감증명서', match: /인감증명/ },
-    { key: 'doc5', label: '기타', match: /^$/ }  // 항상 체크 (사유서, 국민연금 등이 들어가는 항목)
+    { key: 'doc1', label: '건설기술인 경력변경신고서(「건설기술 진흥법 시행규칙」 별지 제14호서식)', match: /경력변경신고서/ },
+    { key: 'doc2', label: '경력확인서(「건설기술 진흥법 시행규칙」 별지 제12호서식)', match: /경력확인서$|^경력확인서/ },
+    { key: 'doc3', label: '국외 경력확인서(「건설기술 진흥법 시행규칙」 별지 제13호서식)', match: /국외경력확인서/ },
+    { key: 'doc4', label: '경력확인서 또는 국외 경력확인서 확인업체의 인감증명서(인감증명서가 신고된 경우 제외)', match: /인감증명/ },
+    { key: 'doc5', label: '기 타', match: /^$/ }
   ];
-  // 사례집 증빙서류 텍스트로 매칭
   const docText = agg.증빙서류.join(' ');
   const otherDocs = agg.증빙서류.filter(d =>
     !/^신고자료경정신청서/.test(d) && !/^경력변경신고서$/.test(d) && !/^경력확인서/.test(d) && !/^국외경력확인서/.test(d) && !/인감증명/.test(d)
   );
-
   const docRow = docOptions.map(d => {
     const checked = d.key === 'doc5' ? (otherDocs.length > 0) : d.match.test(docText);
-    return `<label><input type="checkbox" data-form4="${d.key}" ${checked ? 'checked' : ''}> ${d.label}${d.key === 'doc5' && checked ? ` : <span class="editable-field" contenteditable="true" data-form4="doc5-text">${esc(otherDocs.join(', '))}</span>` : ''}</label>`;
+    return `[ ${checked ? '✔' : '&nbsp;'} ] ${d.label}${d.key === 'doc5' && checked ? ` : <span class="editable-field" contenteditable="true" data-form4="doc5-text">${esc(otherDocs.join(', '))}</span>` : ''}`;
   }).join('<br>');
 
   const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = today.getMonth() + 1;
-  const dd = today.getDate();
+  const yyyy = today.getFullYear(), mm = today.getMonth()+1, dd = today.getDate();
+
+  const th = 'style="background:#d9d9d9;border:1px solid #000;padding:5px 7px;text-align:center;vertical-align:middle;font-weight:600;"';
+  const td = 'style="border:1px solid #000;padding:5px 7px;vertical-align:middle;"';
+
+  const reqLine1 = ['참여기간','참여사업명','발주자','직무분야','전문분야'].map(opt =>
+    `[ ${checkedSet.has(opt)?'✔':'&nbsp;'} ] ${opt}`).join('&nbsp;&nbsp; ');
+  const reqLine2 = ['공사종류','담당업무','공&nbsp;법','직&nbsp;&nbsp;위','기&nbsp;&nbsp;타'].map((opt, i) => {
+    const key = ['공사종류','담당업무','공법','직위','기타'][i];
+    return `[ ${checkedSet.has(key)?'✔':'&nbsp;'} ] ${opt}`;
+  }).join('&nbsp;&nbsp; ');
 
   return `
-    <div class="official-form" id="official-form4">
-      <div class="form-header">
-        <div class="form-no">■ 건설기술인 등급 인정 및 교육·훈련 등에 관한 기준[별지 제4호서식]</div>
-        <div class="form-title">신고자료 경정신청서</div>
-      </div>
-      <div class="form-notice">※ 어두운 칸은 신청인이 적지 않습니다.</div>
+    <div class="official-form" id="official-form4" style="font-family:'맑은 고딕','Malgun Gothic','Pretendard',sans-serif;font-size:10pt;padding:15mm 18mm;max-width:210mm;margin:0 auto;">
+      <div style="font-size:9pt;margin-bottom:3px;">■ 건설기술인 등급 인정 및 교육·훈련 등에 관한 기준[별지 제4호서식]</div>
+      <div style="text-align:center;font-size:15pt;font-weight:700;letter-spacing:8px;margin:6px 0 10px;">신고자료 경정신청서</div>
+      <div style="font-size:9pt;margin-bottom:3px;">※ 어두운 칸은 신청인이 적지 않습니다.</div>
 
-      <table>
+      <table style="width:100%;border-collapse:collapse;font-size:10pt;">
         <tr>
-          <th>접수번호</th><td></td>
-          <th>접수일</th><td></td>
-          <th>실명확인</th><td></td>
-          <th>처리기간</th><td>10일</th>
+          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;width:60px;">접수번호</th>
+          <td ${td} style="border:1px solid #000;padding:4px 6px;width:80px;"></td>
+          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;">접수일</th>
+          <td ${td} style="border:1px solid #000;padding:4px 6px;width:80px;"></td>
+          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;">실명확인</th>
+          <td ${td} style="border:1px solid #000;padding:4px 6px;width:80px;"></td>
+          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;">처리기간</th>
+          <td ${td} style="border:1px solid #000;padding:4px 6px;text-align:center;">10일</td>
         </tr>
         <tr>
-          <th rowspan="3">신청인<br>인적사항</th>
-          <td colspan="3">
-            <strong>성명</strong> <span class="editable-field" contenteditable="true" data-form4="name">${esc(pi.name || '')}</span>
+          <th ${th} rowspan="3" style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;width:60px;">신청인<br>인적사항</th>
+          <td ${td} colspan="3" style="border:1px solid #000;padding:6px;">
+            <strong>성명</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="name" style="letter-spacing:4px;min-width:80px;">${esc(pi.name||'')}</span>
           </td>
-          <td colspan="3">
-            <strong>생년월일</strong> <span class="editable-field" contenteditable="true" data-form4="birth">${esc(pi.birthDate || '')}</span>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <strong>전자우편주소</strong><br>
-            <span class="editable-field" contenteditable="true" data-form4="email" style="min-width:140px;">${esc(pi.email || '')}</span>
-          </td>
-          <td colspan="2">
-            <strong>전화번호</strong><br>
-            <span class="editable-field" contenteditable="true" data-form4="phone">${esc(pi.phone || '')}</span>
-          </td>
-          <td colspan="2">
-            <strong>휴대전화번호</strong><br>
-            <span class="editable-field" contenteditable="true" data-form4="mobile">${esc(pi.mobile || '')}</span>
+          <td ${td} colspan="4" style="border:1px solid #000;padding:6px;">
+            <strong>생년월일</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="birth" style="min-width:80px;">${esc(pi.birthDate||'')}</span>
           </td>
         </tr>
         <tr>
-          <td colspan="6">
-            <strong>주소</strong> <span class="editable-field" contenteditable="true" data-form4="address" style="min-width:300px;">${esc(pi.address || '')}</span>
+          <td ${td} colspan="2" style="border:1px solid #000;padding:6px;">
+            <div style="font-size:9pt;">전&nbsp;자&nbsp;우&nbsp;편&nbsp;주&nbsp;소</div>
+            <span class="editable-field" contenteditable="true" data-form4="email" style="min-width:120px;">${esc(pi.email||'')}</span>
+          </td>
+          <td ${td} colspan="2" style="border:1px solid #000;padding:6px;">
+            <div style="font-size:9pt;">전화번호</div>
+            <span class="editable-field" contenteditable="true" data-form4="phone" style="min-width:90px;">${esc(pi.phone||'')}</span>
+          </td>
+          <td ${td} colspan="3" style="border:1px solid #000;padding:6px;">
+            <div style="font-size:9pt;">휴대전화번호</div>
+            <span class="editable-field" contenteditable="true" data-form4="mobile" style="min-width:90px;">${esc(pi.mobile||'')}</span>
           </td>
         </tr>
         <tr>
-          <th>신청사항<br>(✔표시)</th>
-          <td colspan="6" class="checkbox-row">${reqRow}</td>
-        </tr>
-        <tr>
-          <th>관련증빙<br>자료(✔표시)</th>
-          <td colspan="6" class="checkbox-row">${docRow}</td>
-        </tr>
-        <tr>
-          <th>건설기술<br>경력증<br>미반납 사유</th>
-          <td colspan="6">
-            <span class="editable-field" contenteditable="true" data-form4="cert-reason" style="min-width:400px; min-height:60px; display:block;"></span>
+          <td ${td} colspan="7" style="border:1px solid #000;padding:6px;">
+            <strong>주소</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="address" style="min-width:280px;">${esc(pi.address||'')}</span>
           </td>
         </tr>
         <tr>
-          <th>수신요청</th>
-          <td colspan="6" class="checkbox-row">
-            <label><input type="checkbox" data-form4="recv-home"> 자택전화</label>
-            <label><input type="checkbox" data-form4="recv-work"> 회사전화</label>
-            <label><input type="checkbox" data-form4="recv-mobile"> 휴대전화</label>
-            <label><input type="checkbox" data-form4="recv-sms" checked> 문자(휴대전화)</label>
-            <label><input type="checkbox" data-form4="recv-email"> 전자우편</label>
-            <label><input type="checkbox" data-form4="recv-doc"> 문서</label>
+          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;">신청사항<br>(✔표시)</th>
+          <td ${td} colspan="7" style="border:1px solid #000;padding:7px;line-height:2;">
+            ${reqLine1}<br>${reqLine2}
+          </td>
+        </tr>
+        <tr>
+          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;">관련증빙<br>자료(✔표시)</th>
+          <td ${td} colspan="7" style="border:1px solid #000;padding:7px;line-height:2;">${docRow}</td>
+        </tr>
+        <tr>
+          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;vertical-align:middle;">건설기술<br>경력증<br>미반납 사유</th>
+          <td ${td} colspan="7" style="border:1px solid #000;padding:6px;height:70px;vertical-align:top;">
+            <span class="editable-field" contenteditable="true" data-form4="cert-reason" style="display:block;min-height:55px;"></span>
+          </td>
+        </tr>
+        <tr>
+          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;">수신요청</th>
+          <td ${td} colspan="7" style="border:1px solid #000;padding:7px;">
+            [ <input type="checkbox" data-form4="recv-home"> ] 자택전화&nbsp;&nbsp;
+            [ <input type="checkbox" data-form4="recv-work"> ] 회사전화&nbsp;&nbsp;
+            [ <input type="checkbox" data-form4="recv-mobile"> ] 휴대전화&nbsp;&nbsp;
+            [ <input type="checkbox" data-form4="recv-sms" checked> ] 문자(휴대전화)&nbsp;&nbsp;
+            [ <input type="checkbox" data-form4="recv-email"> ] 전자우편&nbsp;&nbsp;
+            [ <input type="checkbox" data-form4="recv-doc"> ] 문서
           </td>
         </tr>
       </table>
 
-      <p style="margin: 16px 0; font-size: 11pt;">
+      <p style="margin:12px 0 6px;font-size:10pt;line-height:1.6;">
         「건설기술인 등급 인정 및 교육·훈련 등에 관한 기준」 제15조의 규정에 따라 신고자료 경정신청서를 제출합니다.
       </p>
-
-      <div class="signature-area">
-        <span class="editable-field" contenteditable="true" data-form4="sign-year">${yyyy}</span> 년
-        <span class="editable-field" contenteditable="true" data-form4="sign-month">${mm}</span> 월
-        <span class="editable-field" contenteditable="true" data-form4="sign-day">${dd}</span> 일<br><br>
-        신청인(본인) <span class="signature-line"></span> (서명 또는 인)
+      <div style="text-align:right;font-size:10pt;margin:8px 30px 4px 0;">
+        ${yyyy} 년 &nbsp;&nbsp; ${mm} 월 &nbsp;&nbsp; ${dd} 일
       </div>
-
-      <div style="margin-top:20px; font-size:11pt;">
-        <strong>한국건설기술인협회 협회장 귀하</strong>
+      <div style="text-align:center;font-size:10pt;margin:8px 0;">
+        신청인(본인) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (서명 또는 인)
       </div>
+      <div style="font-size:11pt;font-weight:700;margin:14px 0 12px;">○○○○○ 협회장 귀하</div>
 
-      <div class="form-note">
-        <strong>※ 유의사항</strong><br>
-        1. 신청인(본인)의 서명 또는 인에는 신청인 본인이 직접 서명 또는 날인해야 하며, 다른 사람이 이를 위조하는 경우 「형법」 제239조에 따라 처벌 받을 수 있습니다.<br>
-        2. 건설기술인 본인이 작성하고 서명한 후 직접 제출하거나 대리인이 제출할 수 있으며, 대리인이 제출 시 실명확인을 위해 아래의 기재사항을 적어야 합니다.<br>
-        3. 대리인 신청 또는 우편신청 시 본인 신청 사실여부 확인 후 접수 처리됩니다.<br>
-        4. 경정결과에 따라 등급이 재산정되어 변동될 수 있으며 반납하지 않은 경력증의 부정사용·대여·도용 또는 거짓신고 등은 관련규정에 따라 처분을 받게 됩니다.
-      </div>
+      <!-- 첨부서류/수수료 -->
+      <table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:8px;">
+        <tr>
+          <th style="background:#d9d9d9;border:1px solid #000;padding:5px 8px;text-align:center;width:65px;">첨부서류</th>
+          <td style="border:1px solid #000;padding:5px 8px;">관련증빙 자료</td>
+          <td style="border:1px solid #000;padding:5px 8px;text-align:center;width:170px;font-size:9pt;line-height:1.5;">수수료<br>「건설기술 진흥법 시행규칙」<br>제18조제7항에 따른 수수료</td>
+        </tr>
+      </table>
+
+      <!-- 유의사항 -->
+      <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:0;">
+        <tr>
+          <td colspan="3" style="background:#d9d9d9;border:1px solid #000;padding:3px;text-align:center;font-weight:700;">유의사항</td>
+        </tr>
+        <tr>
+          <td colspan="3" style="border:1px solid #000;padding:6px 8px;font-size:9pt;line-height:1.7;">
+            1. 신청인(본인)의 서명 또는 인에는 신청인 본인이 직접 서명 또는 날인해야 하며, 다른 사람이 이를 위조하는 경우「형법」 제239조에 따라 처벌 받을 수 있습니다.<br>
+            2. 건설기술인 본인이 작성하고 서명한 후 직접 제출하거나 대리인이 제출할 수 있으며, 대리인이 제출 시 실명확인을 위해 아래의 기재사항을 적어야 합니다.<br>
+            3. 대리인 신청 또는 우편신청 시 본인 신청 사실여부 확인 후 접수 처리됩니다.<br>
+            4. 경정결과에 따라 등급이 재산정되어 변동될 수 있으며 반납하지 않은 경력증의 부정사용(분야변경 또는 등급하락 이전 경력증의 사용을 말합니다)·대여(자격 또는 경력증)·도용 또는 거짓신고 등은 관련규정에 따라 처분을 받게 됩니다.
+          </td>
+        </tr>
+      </table>
+
+      <!-- 대리신청인 -->
+      <table style="width:100%;border-collapse:collapse;font-size:10pt;margin-top:0;">
+        <tr>
+          <th style="background:#d9d9d9;border:1px solid #000;padding:5px 6px;text-align:center;width:65px;">대리신청인</th>
+          <th style="background:#d9d9d9;border:1px solid #000;padding:4px 8px;text-align:center;width:40px;">성명</th>
+          <td style="border:1px solid #000;padding:5px 8px;width:120px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="font-size:9pt;">(서명 또는 인)</span></td>
+          <th style="background:#d9d9d9;border:1px solid #000;padding:4px 8px;text-align:center;width:55px;">생년월일</th>
+          <td style="border:1px solid #000;padding:5px 8px;"></td>
+          <th style="background:#d9d9d9;border:1px solid #000;padding:4px 8px;text-align:center;width:40px;">연락처</th>
+          <td style="border:1px solid #000;padding:5px 8px;"></td>
+        </tr>
+      </table>
+      <div style="text-align:right;font-size:8pt;margin-top:4px;">210㎜×297㎜[일반용지 60g/㎡(재활용품)]</div>
     </div>
   `;
 }
+
 
 /* ============================================================
    별지 제14호 - 건설기술인 경력변경신고서
