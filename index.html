@@ -3685,6 +3685,7 @@ async function handleFile(event) {
       setUploadStep(2, 'active');
       setUploadStepLabel(3, 'AI 정보 구조화 (이미지와 동시 처리)');
       extracted = await extractInfoFromImage(apiKey, file, signal);
+      _lastRawText = '';  // 이미지는 원문 없음 → specialty 전체 재검증
       setUploadStep(2, 'done');
       setUploadStep(3, 'done');
 
@@ -3710,6 +3711,7 @@ async function handleFile(event) {
         setUploadStepLabel(3, 'AI Vision으로 OCR + 정보 구조화');
         setUploadStep(3, 'active');
         extracted = await extractInfoFromPdfBinary(apiKey, file, signal);
+        _lastRawText = '';  // 스캔PDF는 원문 없음 → specialty 전체 재검증
         setUploadStep(3, 'done');
       }
 
@@ -4027,12 +4029,31 @@ function mapBasicInfo(info) {
 function _cleanSpecialtyIfFake(projs, rawText) {
   if (!projs || projs.length === 0) return;
 
+  // 원문 없음(이미지/스캔PDF) → specialty가 모두 같거나 duty와 겹치면 제거
+  const noRawText = !rawText || rawText.trim().length < 50;
+
   // 원문에 "전문분야" 컬럼이 실제로 있는지 확인
-  const hasSpecialtyCol = /전문\s*분야/.test(rawText);
+  const hasSpecialtyCol = !noRawText && /전문\s*분야/.test(rawText);
   if (!hasSpecialtyCol) {
-    // 전문분야 컬럼 자체가 없는 경우 → 모두 제거
-    projs.forEach(p => { p.specialty = ''; });
-    console.log('[cleanSpecialty] 원문에 전문분야 컬럼 없음 → specialty 전체 제거');
+    // 원문 없거나 전문분야 컬럼 자체가 없는 경우 → duty 기반으로만 정리
+    projs.forEach(p => {
+      if (!p.specialty) return;
+      const spec = (p.specialty || '').trim();
+      const duty = (p.duty || '').trim();
+      const field = (p.field || '').trim();
+      // specialty가 duty 또는 field와 같거나 포함이면 제거
+      if (duty && (spec === duty || duty.includes(spec) || spec.includes(duty))) {
+        p.specialty = '';
+      } else if (field && spec === field) {
+        p.specialty = '';
+      }
+    });
+    // 모든 specialty가 동일값이면 일괄 제거
+    const specs = projs.map(p => (p.specialty||'').trim()).filter(Boolean);
+    if (specs.length > 1 && new Set(specs).size === 1) {
+      projs.forEach(p => { p.specialty = ''; });
+    }
+    console.log('[cleanSpecialty] 원문 없음 or 전문분야 컬럼 없음 → duty 기반 검증 완료');
     return;
   }
 
@@ -5063,60 +5084,48 @@ function renderResults() {
   // 대상자 정보 표시
   const piEl = document.getElementById('results-person-info');
   if (piEl) {
-    const badge = (label, value) =>
-      `<span style="font-size:13px;background:var(--bg-2);border:1px solid var(--line);padding:4px 12px;border-radius:4px;color:var(--ink-2);">
-        <span style="color:var(--muted);font-size:11px;margin-right:4px;">${label}</span>${esc(value)}
-      </span>`;
-
-    const basicItems = [
-      personalInfo.name     ? badge('성명', personalInfo.name) : '',
-      personalInfo.field    ? badge('분야', personalInfo.field) : '',
-      personalInfo.specialty? badge('전문분야', personalInfo.specialty) : '',
-      personalInfo.grade    ? badge('등급', personalInfo.grade) : '',
-    ].filter(Boolean).join('');
-
-    // gradeTable 표 렌더링
     const gt = personalInfo.gradeTable || [];
     let gradeTableHtml = '';
+
     if (gt.length > 0) {
-      // 구분별로 그룹핑
+      // 구분별 그룹핑
       const groups = {};
+      const groupOrder = [];
       gt.forEach(row => {
         const key = row.구분 || '기타';
-        if (!groups[key]) groups[key] = [];
+        if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
         groups[key].push(row);
       });
 
-      const tdStyle = 'padding:5px 10px;border:1px solid var(--line);font-size:12px;text-align:center;';
-      const thStyle = tdStyle + 'background:var(--bg-2);font-weight:600;color:var(--ink-2);';
-      const subThStyle = tdStyle + 'background:var(--bg);font-weight:500;color:var(--muted);font-size:11px;';
+      const B = 'border:1px solid #ccc;';
+      const center = 'text-align:center;vertical-align:middle;';
+      const th = (extra='') => `style="${B}padding:5px 10px;background:#f1f5f9;font-weight:600;font-size:12px;${center}${extra}"`;
+      const subth = (extra='') => `style="${B}padding:4px 8px;background:#f8fafc;font-weight:500;font-size:11px;color:#64748b;${center}${extra}"`;
+      const td = (extra='') => `style="${B}padding:5px 10px;font-size:12px;${center}${extra}"`;
 
-      const groupEntries = Object.entries(groups);
+      const maxRows = Math.max(...groupOrder.map(k => groups[k].length));
 
-      // 헤더 행1: 구분명 (가로로 병렬)
-      let row1 = `<th style="${thStyle}"></th>`; // 빈 첫 셀 (직무분야/전문분야/등급 라벨용)
-      groupEntries.forEach(([구분, rows]) => {
-        row1 += `<th style="${thStyle}" colspan="3">${esc(구분)}</th>`;
+      // 행1: "등급" rowspan + 구분명들 colspan=2
+      let r1 = `<th style="${B}padding:5px 14px;background:#f1f5f9;font-weight:600;font-size:13px;${center}vertical-align:middle;" rowspan="${maxRows + 2}">등급</th>`;
+      groupOrder.forEach(k => {
+        r1 += `<th ${th()} colspan="2">${esc(k)}</th>`;
       });
 
-      // 헤더 행2: 직무분야 / 전문분야 / 등급 반복
-      let row2 = `<th style="${subThStyle}"></th>`;
-      groupEntries.forEach(() => {
-        row2 += `<th style="${subThStyle}">직무분야</th><th style="${subThStyle}">전문분야</th><th style="${subThStyle}">등급</th>`;
+      // 행2: 각 구분 아래 직무분야 / 전문분야
+      let r2 = '';
+      groupOrder.forEach(() => {
+        r2 += `<th ${subth()}>직무분야</th><th ${subth()}>전문분야</th>`;
       });
-
-      // 최대 행 수
-      const maxRows = Math.max(...groupEntries.map(([,rows]) => rows.length));
 
       // 데이터 행
       let dataRows = '';
       for (let i = 0; i < maxRows; i++) {
-        let row = `<td style="${tdStyle}"></td>`;
-        groupEntries.forEach(([, rows]) => {
-          const r = rows[i] || {};
-          row += `<td style="${tdStyle}">${esc(r.직무분야||'')}</td>
-                  <td style="${tdStyle}">${esc(r.전문분야||'')}</td>
-                  <td style="${tdStyle}font-weight:600;">${esc(r.등급||'')}</td>`;
+        let row = '';
+        groupOrder.forEach(k => {
+          const r = groups[k][i] || {};
+          const fieldGrade = [r.직무분야, r.등급].filter(Boolean).join('&nbsp;');
+          const specGrade  = [r.전문분야,  r.등급].filter(Boolean).join('&nbsp;');
+          row += `<td ${td()}>${fieldGrade}</td><td ${td()}>${specGrade}</td>`;
         });
         dataRows += `<tr>${row}</tr>`;
       }
@@ -5125,15 +5134,20 @@ function renderResults() {
         <div style="margin-top:10px;overflow-x:auto;">
           <table style="border-collapse:collapse;font-size:12px;">
             <thead>
-              <tr>${row1}</tr>
-              <tr>${row2}</tr>
+              <tr>${r1}</tr>
+              <tr>${r2}</tr>
             </thead>
             <tbody>${dataRows}</tbody>
           </table>
         </div>`;
     }
 
-    piEl.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;">${basicItems}</div>${gradeTableHtml}`;
+    // 성명만 크게, 분야/등급은 gradeTable로 대체
+    const nameHtml = personalInfo.name
+      ? `<span style="font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-0.02em;">${esc(personalInfo.name)}</span>`
+      : '';
+
+    piEl.innerHTML = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">${nameHtml}</div>${gradeTableHtml}`;
   }
 
   // Summary
