@@ -5570,22 +5570,41 @@ function renderReport() {
 /* ============================================================
    UTIL: view & step
    ============================================================ */
-function goView(id) {
+let _currentView = 'view-input';
+
+function goView(id, fromPopstate) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const target = document.getElementById(id);
+  if (!target) return;
+  target.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+
   // Update step
   if (id === 'view-input') setStep(1);
   else if (id === 'view-analyzing') setStep(2);
   else if (id === 'view-results') setStep(3);
   else if (id === 'view-report') setStep(4);
-  // view-rules와 view-forms는 step 표시 안 함 (별도 페이지)
 
   // 진입 시 자동 렌더링
-  if (id === 'view-rules') {
-    renderRulesPanel();
+  if (id === 'view-rules') renderRulesPanel();
+
+  // 브라우저 history에 화면 상태 기록 (뒤로가기로 사이트 이탈 방지)
+  if (!fromPopstate) {
+    try { history.pushState({ view: id }, '', '#' + id); } catch(e) {}
   }
+  _currentView = id;
 }
+
+// 브라우저 뒤로/앞으로 가기 → 화면 전환으로 처리
+window.addEventListener('popstate', function(e) {
+  const id = (e.state && e.state.view) ? e.state.view : 'view-input';
+  goView(id, true);
+});
+
+// 최초 진입 시 history 초기 상태 등록
+window.addEventListener('DOMContentLoaded', function() {
+  try { history.replaceState({ view: 'view-input' }, '', '#view-input'); } catch(e) {}
+});
 
 function setStep(n) {
   document.querySelectorAll('#steps .step').forEach(s => {
@@ -6006,9 +6025,8 @@ function renderForm4(applied, agg) {
     const checked = d.key === 'doc5' ? (otherDocs.length > 0) : d.match.test(docText);
     let extra = '';
     if (d.key === 'doc5') {
-      const userText = otherDocs.length > 0 ? esc(otherDocs.join(', ')) : '';
-      extra = ' : <span class="editable-field" contenteditable="true" data-form4="doc5-text" style="font-size:9pt;">' + userText + '</span>'
-            + '<div style="font-size:7.5pt;color:#999;line-height:1.6;margin-top:2px;padding-left:18px;">(참고) 4대보험자료 중 택일, 공사(용역)계약서 등 (부도·폐업시 생략), 4대보험자료 중 택일[전체내역], 사유서(본인), 사유서(본인,업체), 실적증명서 또는 계약서 등, 작업일보, 기안문 등</div>';
+      extra = ' : <span class="editable-field" contenteditable="true" data-form4="doc5-text" style="font-size:9pt;min-width:200px;"></span>'
+            + '<div style="font-size:7.5pt;color:#999;line-height:1.6;margin-top:2px;padding-left:18px;">(참고) 사유서(본인), 사유서(본인,업체), 실적증명서 또는 계약서 등, 4대보험자료 중 택일[전체내역], 작업일보, 기안문 등</div>';
     }
     return '<label style="display:block;font-size:9pt;line-height:1.9;"><input type="checkbox" data-form4="' + d.key + '" ' + (checked?'checked':'') + '> ' + d.label + extra + '</label>';
   }).join('');
