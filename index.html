@@ -458,11 +458,20 @@
   /* ====== UTIL ====== */
   .hidden { display: none !important; }
   .toast {
-    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-    background: var(--ink); color: var(--paper); padding: 12px 22px;
-    font-size: 13px; z-index: 200; animation: tin .25s ease;
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: var(--ink); color: var(--paper); padding: 18px 48px 18px 24px;
+    font-size: 14px; z-index: 9999; animation: tin .25s ease;
+    max-width: 480px; width: 90%; line-height: 1.6; text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.28);
   }
-  @keyframes tin { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  .toast-close {
+    position: absolute; top: 8px; right: 12px;
+    background: none; border: none; color: var(--paper);
+    font-size: 18px; cursor: pointer; line-height: 1; opacity: 0.7;
+    padding: 2px 4px;
+  }
+  .toast-close:hover { opacity: 1; }
+  @keyframes tin { from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
   .footnote { color: var(--muted); font-size: 12.5px; padding: 16px 0 0; border-top: 1px solid var(--line); margin-top: 36px; line-height: 1.7; }
 
@@ -2006,11 +2015,7 @@ const PI_FIELDS = [
   { key: 'birthDate',          label: '생년월일',            placeholder: 'YYYY.MM.DD' },
   { key: 'field',              label: '분야',                placeholder: '건축' },
   { key: 'specialty',          label: '전문분야',            placeholder: '건축시공' },
-  { key: 'grade',              label: '기술등급',            placeholder: '특급기술자' },
-  { key: 'certNumber',         label: '기술자번호',          placeholder: 'KCEA-...' },
-  { key: 'nationalCertNumber', label: '국가기술자격 등록번호', placeholder: '예: 21-101-12345' },
-  { key: 'address',            label: '주소',                placeholder: '예: 서울 강남구 ...' },
-  { key: 'issueDate',          label: '발급일',              placeholder: 'YYYY.MM.DD' }
+  { key: 'grade',              label: '기술등급',            placeholder: '특급기술자' }
 ];
 
 const SAMPLE_PI = {
@@ -3455,12 +3460,7 @@ async function handleFile(event) {
   event.target.value = '';
 
   const apiKey = document.getElementById('apikey').value.trim();
-  if (!apiKey) {
-    toast('먼저 1단계 "API 키 입력"을 완료해 주세요.');
-    document.getElementById('hero-api-key')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => document.getElementById('hero-api-key')?.focus(), 600);
-    return;
-  }
+  // worker 모드: API 키 없어도 진행 가능
 
   const lname = file.name.toLowerCase();
   const isImage = (file.type && file.type.startsWith('image/')) || /\.(png|jpg|jpeg|webp|gif)$/i.test(lname);
@@ -4260,13 +4260,6 @@ async function extractInfoFromPdfBinary(apiKey, file, signal) {
    ONBOARDING HELPERS (API key sync, file trigger, scroll)
    ============================================================ */
 function triggerFileUpload() {
-  const apiKey = (document.getElementById('apikey')?.value || '').trim();
-  if (!apiKey) {
-    toast('먼저 1단계 "API 키 입력"을 완료해 주세요.');
-    document.getElementById('hero-api-key')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => document.getElementById('hero-api-key')?.focus(), 600);
-    return;
-  }
   document.getElementById('file-input').click();
 }
 
@@ -5164,11 +5157,16 @@ function setStep(n) {
 }
 
 function toast(msg, durationMs) {
+  // 기존 toast 제거
+  document.querySelectorAll('.toast').forEach(t => t.remove());
   const el = document.createElement('div');
   el.className = 'toast';
-  el.textContent = msg;
+  el.style.position = 'fixed';
+  el.innerHTML = msg.replace(/\n/g, '<br>') + '<button class="toast-close" onclick="this.parentElement.remove()">✕</button>';
   document.body.appendChild(el);
-  setTimeout(() => el.remove(), durationMs || 2200);
+  const dur = durationMs || 6000;
+  const timer = setTimeout(() => el.remove(), dur);
+  el.querySelector('.toast-close').addEventListener('click', () => { clearTimeout(timer); el.remove(); });
 }
 
 /* ============================================================
