@@ -1057,18 +1057,21 @@
   }
   .official-form input[type="checkbox"] {
     appearance: none; -webkit-appearance: none;
-    width: 13px; height: 13px;
-    border: 1px solid #000; background: #fff;
+    width: 14px; height: 14px;
+    border: 1px solid #555; background: #fff;
     display: inline-block; vertical-align: middle;
     position: relative; cursor: pointer;
-    margin-right: 2px;
+    margin-right: 3px; border-radius: 2px;
+  }
+  .official-form input[type="checkbox"]:checked {
+    background: #1d4ed8; border-color: #1d4ed8;
   }
   .official-form input[type="checkbox"]:checked::after {
-    content: '✔'; font-size: 10px; color: #000;
-    position: absolute; top: -2px; left: 1px; line-height: 1;
+    content: '✔'; font-size: 9px; color: #fff;
+    position: absolute; top: -1px; left: 1px; line-height: 1; font-weight: 700;
   }
   .official-form .checkbox-row input[type="checkbox"] {
-    transform: scale(1.2); margin-right: 6px; cursor: pointer;
+    transform: scale(1.1); margin-right: 5px; cursor: pointer;
   }
   .official-form .signature-area {
     text-align: right; margin-top: 30px; padding-right: 60px;
@@ -3981,7 +3984,15 @@ async function extractInfoFromText(apiKey, rawText, signal) {
 - 현재 근무 중이면 endDate="근무중"으로 입력하세요.
 - specialty(전문분야)는 경력증명서 원문에 전문분야 항목이 명시된 경우에만 입력하세요. 원문에 없으면 반드시 빈 문자열("")로 두세요. 담당업무·공사종류·직무분야로 추측해서 채우지 마세요.
 - field(직무분야)도 원문에 직무분야 항목이 명시된 경우에만 입력하세요. 없으면 빈 문자열("")로 두세요.
-- 등급 표가 있으면 gradeTable 배열로 추출하세요. 각 행마다 구분(설계·시공 등/건설사업관리/품질관리 등), 직무분야, 전문분야, 등급을 입력하세요.
+- 등급 표가 있으면 gradeTable 배열로 추출하세요.
+- gradeTable 추출 규칙:
+  * 표의 각 데이터 행 하나가 gradeTable 배열의 원소 하나입니다.
+  * "구분"은 열 헤더(설계·시공 등 / 건설사업관리 / 품질관리 등)입니다.
+  * "직무분야"는 해당 행의 직무분야 셀 값만 입력 (예: 건축, 토목, 안전관리). 등급 포함 금지.
+  * "전문분야"는 해당 행의 전문분야 셀 값만 입력 (예: 건축시공, 건축구조). 등급 포함 금지.
+  * "등급"은 해당 행의 등급 셀 값만 입력 (예: 특급, 고급, 초급). 직무분야/전문분야 포함 금지.
+  * 같은 구분(설계·시공 등)에 여러 행(건축 특급, 안전관리 초급 등)이 있으면 각각 별도 원소로 추출.
+  * 품질관리 구분은 직무분야/전문분야 없이 등급만 있을 수 있음.
 - grade 필드에는 대표 등급(특급/고급/중급/초급 중 가장 높은 것) 1개만 입력하세요.
 - 성명에 한자가 병기된 경우(예: 홍길동(洪吉童)) 한글 이름만 추출하세요.
 
@@ -3994,12 +4005,11 @@ async function extractInfoFromText(apiKey, rawText, signal) {
     "전문분야": "",
     "등급": "대표 등급 1개 (예: 특급)",
     "gradeTable": [
-      {
-        "구분": "설계·시공 등 또는 건설사업관리 또는 품질관리 등 직무구분명",
-        "직무분야": "토목",
-        "전문분야": "토목시공",
-        "등급": "특급"
-      }
+      { "구분": "설계·시공 등", "직무분야": "건축", "전문분야": "건축시공", "등급": "특급" },
+      { "구분": "설계·시공 등", "직무분야": "안전관리", "전문분야": "건축기계설비", "등급": "초급" },
+      { "구분": "건설사업관리", "직무분야": "건축", "전문분야": "건축시공", "등급": "특급" },
+      { "구분": "건설사업관리", "직무분야": "안전관리", "전문분야": "건축기계설비", "등급": "초급" },
+      { "구분": "품질관리", "직무분야": "", "전문분야": "", "등급": "특급" }
     ],
     "기술자번호": "",
     "발급일": ""
@@ -4997,7 +5007,7 @@ async function runAnalysis(skipAI) {
   }));
 
   // skipAI가 true면 AI 우회. 키가 없어도 우회. 둘 중 하나라도 해당하면 규칙만 사용.
-  let useAI = !skipAI && !!(apiKey || CONFIG.mode === 'server');
+  let useAI = !skipAI && !!(apiKey || CONFIG.mode === 'server' || CONFIG.mode === 'worker');
   const BATCH_SIZE = 30;  // 유료: 한 번 호출에 30개씩 분석
   const PARALLEL = 3;    // 동시 병렬 호출 수 (배치 3개 동시 실행)
 
@@ -5201,7 +5211,7 @@ function renderResults() {
     let gradeTableHtml = '';
 
     if (gt.length > 0) {
-      // 구분별 그룹핑
+      // 구분별 그룹핑 (순서 유지)
       const groups = {};
       const groupOrder = [];
       gt.forEach(row => {
@@ -5210,37 +5220,49 @@ function renderResults() {
         groups[key].push(row);
       });
 
-      const B = 'border:1px solid #ccc;';
-      const center = 'text-align:center;vertical-align:middle;';
-      const th = (extra='') => `style="${B}padding:5px 10px;background:#f1f5f9;font-weight:600;font-size:12px;${center}${extra}"`;
-      const subth = (extra='') => `style="${B}padding:4px 8px;background:#f8fafc;font-weight:500;font-size:11px;color:#64748b;${center}${extra}"`;
-      const td = (extra='') => `style="${B}padding:5px 10px;font-size:12px;${center}${extra}"`;
+      const B  = 'border:1px solid #bbb;';
+      const C  = 'text-align:center;vertical-align:middle;';
+      const TH = (extra='') => `style="${B}padding:5px 10px;background:#e8edf2;font-weight:600;font-size:12px;${C}${extra}"`;
+      const SH = (extra='') => `style="${B}padding:4px 8px;background:#f1f5f9;font-weight:500;font-size:11px;color:#475569;${C}${extra}"`;
+      const TD = (extra='') => `style="${B}padding:5px 10px;font-size:12px;${C}${extra}"`;
 
       const maxRows = Math.max(...groupOrder.map(k => groups[k].length));
 
-      // 행1: "등급" rowspan + 구분명들 colspan=2
-      let r1 = `<th style="${B}padding:5px 14px;background:#f1f5f9;font-weight:600;font-size:13px;${center}vertical-align:middle;" rowspan="${maxRows + 2}">등급</th>`;
+      // 헤더 행1: 왼쪽 "등급" rowspan전체 + 구분명 colspan=2 (품질관리는 colspan=1)
+      let r1 = `<th style="${B}padding:6px 14px;background:#e8edf2;font-weight:700;font-size:13px;${C}" rowspan="${maxRows + 2}">등급</th>`;
       groupOrder.forEach(k => {
-        r1 += `<th ${th()} colspan="2">${esc(k)}</th>`;
+        const isQuality = /품질/.test(k);
+        r1 += `<th ${TH()} colspan="${isQuality ? 1 : 2}">${esc(k)}</th>`;
       });
 
-      // 행2: 각 구분 아래 직무분야 / 전문분야
+      // 헤더 행2: 구분마다 직무분야/전문분야 (품질관리는 생략)
       let r2 = '';
-      groupOrder.forEach(() => {
-        r2 += `<th ${subth()}>직무분야</th><th ${subth()}>전문분야</th>`;
+      groupOrder.forEach(k => {
+        const isQuality = /품질/.test(k);
+        if (!isQuality) {
+          r2 += `<th ${SH()}>직무분야</th><th ${SH()}>전문분야</th>`;
+        }
       });
 
-      // 데이터 행
+      // 데이터 행: 원본 표와 동일하게 직무분야·전문분야·등급 각각 분리
       let dataRows = '';
       for (let i = 0; i < maxRows; i++) {
-        let row = '';
+        let cells = '';
         groupOrder.forEach(k => {
           const r = groups[k][i] || {};
-          const fieldGrade = [r.직무분야, r.등급].filter(Boolean).join('&nbsp;');
-          const specGrade  = [r.전문분야,  r.등급].filter(Boolean).join('&nbsp;');
-          row += `<td ${td()}>${fieldGrade}</td><td ${td()}>${specGrade}</td>`;
+          const isQuality = /품질/.test(k);
+          if (isQuality) {
+            // 품질관리는 등급만
+            cells += `<td ${TD('font-weight:600;')}>${esc(r.등급 || '')}</td>`;
+          } else {
+            // 직무분야 셀: "건축&nbsp;특급" 형태 (원본과 동일)
+            const fd = [r.직무분야, r.등급].filter(Boolean).join('&nbsp;');
+            // 전문분야 셀: "건축시공&nbsp;특급" 형태
+            const sp = [r.전문분야, r.등급].filter(Boolean).join('&nbsp;');
+            cells += `<td ${TD()}>${fd}</td><td ${TD()}>${sp}</td>`;
+          }
         });
-        dataRows += `<tr>${row}</tr>`;
+        dataRows += `<tr>${cells}</tr>`;
       }
 
       gradeTableHtml = `
@@ -6032,160 +6054,167 @@ function renderFormsSummary(applied, agg) {
 function renderForm4(applied, agg) {
   const pi = personalInfo;
 
-  const allOptions = ['참여기간', '참여사업명', '발주자', '직무분야', '전문분야', '공사종류', '담당업무', '공법', '직위', '기타'];
+  const allOptions = ['참여기간','참여사업명','발주자','직무분야','전문분야','공사종류','담당업무','공법','직위','기타'];
   const checkedSet = new Set(agg.신청사항);
 
   const docOptions = [
-    { key: 'doc1', label: '건설기술인 경력변경신고서(「건설기술 진흥법 시행규칙」 별지 제14호서식)', match: /경력변경신고서/ },
-    { key: 'doc2', label: '경력확인서(「건설기술 진흥법 시행규칙」 별지 제12호서식)', match: /경력확인서$|^경력확인서/ },
-    { key: 'doc3', label: '국외 경력확인서(「건설기술 진흥법 시행규칙」 별지 제13호서식)', match: /국외경력확인서/ },
-    { key: 'doc4', label: '경력확인서 또는 국외 경력확인서 확인업체의 인감증명서(인감증명서가 신고된 경우 제외)', match: /인감증명/ },
-    { key: 'doc5', label: '기 타', match: /^$/ }
+    { key:'doc1', label:'건설기술인 경력변경신고서(「건설기술 진흥법 시행규칙」 별지 제14호서식)', match:/경력변경신고서/ },
+    { key:'doc2', label:'경력확인서(「건설기술 진흥법 시행규칙」 별지 제12호서식)', match:/경력확인서$|^경력확인서/ },
+    { key:'doc3', label:'국외 경력확인서(「건설기술 진흥법 시행규칙」 별지 제13호서식)', match:/국외경력확인서/ },
+    { key:'doc4', label:'경력확인서 또는 국외 경력확인서 확인업체의 인감증명서(인감증명서가 신고된 경우 제외)', match:/인감증명/ },
+    { key:'doc5', label:'기 타', match:/^$/ }
   ];
   const docText = agg.증빙서류.join(' ');
   const otherDocs = agg.증빙서류.filter(d =>
     !/^신고자료경정신청서/.test(d) && !/^경력변경신고서$/.test(d) && !/^경력확인서/.test(d) && !/^국외경력확인서/.test(d) && !/인감증명/.test(d)
   );
-  const docRow = docOptions.map(d => {
-    const checked = d.key === 'doc5' ? (otherDocs.length > 0) : d.match.test(docText);
-    return `[ ${checked ? '✔' : '&nbsp;'} ] ${d.label}${d.key === 'doc5' && checked ? ` : <span class="editable-field" contenteditable="true" data-form4="doc5-text">${esc(otherDocs.join(', '))}</span>` : ''}`;
-  }).join('<br>');
 
   const today = new Date();
   const yyyy = today.getFullYear(), mm = today.getMonth()+1, dd = today.getDate();
 
-  const th = 'style="background:#d9d9d9;border:1px solid #000;padding:5px 7px;text-align:center;vertical-align:middle;font-weight:600;"';
-  const td = 'style="border:1px solid #000;padding:5px 7px;vertical-align:middle;"';
+  // 회색 th 스타일
+  const GH = 'background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;vertical-align:middle;font-weight:600;font-size:9pt;white-space:nowrap;';
+  // 일반 td 스타일
+  const TD = 'border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:9pt;';
+  // 입력 가능 흰색 td (접수번호 등)
+  const TDW = 'border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:9pt;background:#fff;';
 
-  const reqLine1 = ['참여기간','참여사업명','발주자','직무분야','전문분야'].map(opt =>
-    `[ ${checkedSet.has(opt)?'✔':'&nbsp;'} ] ${opt}`).join('&nbsp;&nbsp; ');
-  const reqLine2 = ['공사종류','담당업무','공&nbsp;법','직&nbsp;&nbsp;위','기&nbsp;&nbsp;타'].map((opt, i) => {
-    const key = ['공사종류','담당업무','공법','직위','기타'][i];
-    return `[ ${checkedSet.has(key)?'✔':'&nbsp;'} ] ${opt}`;
-  }).join('&nbsp;&nbsp; ');
+  // 신청사항 체크박스 (5+5 두 줄)
+  const line1 = ['참여기간','참여사업명','발주자','직무분야','전문분야'].map(opt =>
+    `<label style="margin-right:12px;white-space:nowrap;font-size:9pt;"><input type="checkbox" data-form4="req-${opt}" ${checkedSet.has(opt)?'checked':''}> ${opt}</label>`
+  ).join('');
+  const line2 = ['공사종류','담당업무','공법','직위','기타'].map(opt =>
+    `<label style="margin-right:12px;white-space:nowrap;font-size:9pt;"><input type="checkbox" data-form4="req-${opt}" ${checkedSet.has(opt)?'checked':''}> ${opt}</label>`
+  ).join('');
+
+  // 관련증빙자료 체크박스
+  const docHtml = docOptions.map(d => {
+    const checked = d.key === 'doc5' ? (otherDocs.length > 0) : d.match.test(docText);
+    const extra = d.key==='doc5' && checked ? ` : <span class="editable-field" contenteditable="true" data-form4="doc5-text" style="font-size:9pt;">${esc(otherDocs.join(', '))}</span>` : '';
+    return `<label style="display:block;font-size:9pt;line-height:1.9;"><input type="checkbox" data-form4="${d.key}" ${checked?'checked':''}> ${d.label}${extra}</label>`;
+  }).join('');
 
   return `
-    <div class="official-form" id="official-form4" style="font-family:'맑은 고딕','Malgun Gothic','Pretendard',sans-serif;font-size:10pt;padding:15mm 18mm;max-width:210mm;margin:0 auto;">
-      <div style="font-size:9pt;margin-bottom:3px;">■ 건설기술인 등급 인정 및 교육·훈련 등에 관한 기준[별지 제4호서식]</div>
-      <div style="text-align:center;font-size:15pt;font-weight:700;letter-spacing:8px;margin:6px 0 10px;">신고자료 경정신청서</div>
-      <div style="font-size:9pt;margin-bottom:3px;">※ 어두운 칸은 신청인이 적지 않습니다.</div>
+    <div id="official-form4" style="font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:9pt;padding:12mm 15mm;max-width:210mm;margin:0 auto;background:#fff;color:#000;">
+      <div style="font-size:8pt;margin-bottom:2px;">■ 건설기술인 등급 인정 및 교육·훈련 등에 관한 기준[별지 제4호서식]</div>
+      <div style="text-align:center;font-size:14pt;font-weight:700;letter-spacing:8px;margin:5px 0 8px;">신고자료 경정신청서</div>
+      <div style="font-size:8pt;margin-bottom:3px;">※ 어두운 칸은 신청인이 적지 않습니다.</div>
 
-      <table style="width:100%;border-collapse:collapse;font-size:10pt;">
+      <table style="width:100%;border-collapse:collapse;">
+        <!-- 접수 행 -->
         <tr>
-          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;width:60px;">접수번호</th>
-          <td ${td} style="border:1px solid #000;padding:4px 6px;width:80px;"></td>
-          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;">접수일</th>
-          <td ${td} style="border:1px solid #000;padding:4px 6px;width:80px;"></td>
-          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;">실명확인</th>
-          <td ${td} style="border:1px solid #000;padding:4px 6px;width:80px;"></td>
-          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;">처리기간</th>
-          <td ${td} style="border:1px solid #000;padding:4px 6px;text-align:center;">10일</td>
+          <th style="${GH}width:55px;">접수번호</th>
+          <td style="${TDW}width:90px;">&nbsp;</td>
+          <th style="${GH}">접수일</th>
+          <td style="${TDW}width:90px;">&nbsp;</td>
+          <th style="${GH}">실명확인</th>
+          <td style="${TDW}width:90px;">&nbsp;</td>
+          <th style="${GH}">처리기간</th>
+          <td style="${TD}text-align:center;width:50px;">10일</td>
         </tr>
+        <!-- 성명/생년월일 -->
         <tr>
-          <th ${th} rowspan="3" style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;width:60px;">신청인<br>인적사항</th>
-          <td ${td} colspan="3" style="border:1px solid #000;padding:6px;">
-            <strong>성명</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="name" style="letter-spacing:4px;min-width:80px;">${esc(pi.name||'')}</span>
-          </td>
-          <td ${td} colspan="4" style="border:1px solid #000;padding:6px;">
-            <strong>생년월일</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="birth" style="min-width:80px;">${esc(pi.birthDate||'')}</span>
-          </td>
+          <th style="${GH}" rowspan="3">신청인<br>인적사항</th>
+          <td style="${TD}" colspan="3"><strong style="font-size:9pt;">성명</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="name" style="letter-spacing:3px;font-size:9pt;">${esc(pi.name||'')}</span></td>
+          <td style="${TD}" colspan="4"><strong style="font-size:9pt;">생년월일</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="birth" style="font-size:9pt;">${esc(pi.birthDate||'')}</span></td>
         </tr>
+        <!-- 연락처 -->
         <tr>
-          <td ${td} colspan="2" style="border:1px solid #000;padding:6px;">
-            <div style="font-size:9pt;">전&nbsp;자&nbsp;우&nbsp;편&nbsp;주&nbsp;소</div>
-            <span class="editable-field" contenteditable="true" data-form4="email" style="min-width:120px;">${esc(pi.email||'')}</span>
+          <td style="${TD}" colspan="2">
+            <div style="font-size:8pt;color:#555;">전자우편주소</div>
+            <span class="editable-field" contenteditable="true" data-form4="email" style="font-size:9pt;min-width:110px;">${esc(pi.email||'')}</span>
           </td>
-          <td ${td} colspan="2" style="border:1px solid #000;padding:6px;">
-            <div style="font-size:9pt;">전화번호</div>
-            <span class="editable-field" contenteditable="true" data-form4="phone" style="min-width:90px;">${esc(pi.phone||'')}</span>
+          <td style="${TD}" colspan="2">
+            <div style="font-size:8pt;color:#555;">전화번호</div>
+            <span class="editable-field" contenteditable="true" data-form4="phone" style="font-size:9pt;min-width:80px;">${esc(pi.phone||'')}</span>
           </td>
-          <td ${td} colspan="3" style="border:1px solid #000;padding:6px;">
-            <div style="font-size:9pt;">휴대전화번호</div>
-            <span class="editable-field" contenteditable="true" data-form4="mobile" style="min-width:90px;">${esc(pi.mobile||'')}</span>
-          </td>
-        </tr>
-        <tr>
-          <td ${td} colspan="7" style="border:1px solid #000;padding:6px;">
-            <strong>주소</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="address" style="min-width:280px;">${esc(pi.address||'')}</span>
+          <td style="${TD}" colspan="3">
+            <div style="font-size:8pt;color:#555;">휴대전화번호</div>
+            <span class="editable-field" contenteditable="true" data-form4="mobile" style="font-size:9pt;min-width:80px;">${esc(pi.mobile||'')}</span>
           </td>
         </tr>
+        <!-- 주소 -->
         <tr>
-          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;">신청사항<br>(✔표시)</th>
-          <td ${td} colspan="7" style="border:1px solid #000;padding:7px;line-height:2;">
-            ${reqLine1}<br>${reqLine2}
+          <td style="${TD}" colspan="7"><strong style="font-size:9pt;">주소</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="address" style="font-size:9pt;min-width:260px;">${esc(pi.address||'')}</span></td>
+        </tr>
+        <!-- 신청사항 -->
+        <tr>
+          <th style="${GH}">신청사항<br>(✔표시)</th>
+          <td style="${TD}" colspan="7">
+            <div style="line-height:1.9;">${line1}</div>
+            <div style="line-height:1.9;">${line2}</div>
           </td>
         </tr>
+        <!-- 관련증빙자료 -->
         <tr>
-          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;">관련증빙<br>자료(✔표시)</th>
-          <td ${td} colspan="7" style="border:1px solid #000;padding:7px;line-height:2;">${docRow}</td>
+          <th style="${GH}">관련증빙<br>자료(✔표시)</th>
+          <td style="${TD}" colspan="7">${docHtml}</td>
         </tr>
+        <!-- 미반납 사유 -->
         <tr>
-          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;vertical-align:middle;">건설기술<br>경력증<br>미반납 사유</th>
-          <td ${td} colspan="7" style="border:1px solid #000;padding:6px;height:70px;vertical-align:top;">
-            <span class="editable-field" contenteditable="true" data-form4="cert-reason" style="display:block;min-height:55px;"></span>
+          <th style="${GH}">건설기술<br>경력증<br>미반납 사유</th>
+          <td style="${TD}" colspan="7" style="height:60px;vertical-align:top;">
+            <span class="editable-field" contenteditable="true" data-form4="cert-reason" style="display:block;min-height:45px;font-size:9pt;"></span>
           </td>
         </tr>
+        <!-- 수신요청 -->
         <tr>
-          <th ${th} style="background:#d9d9d9;border:1px solid #000;padding:5px 4px;text-align:center;">수신요청</th>
-          <td ${td} colspan="7" style="border:1px solid #000;padding:7px;">
-            [ <input type="checkbox" data-form4="recv-home"> ] 자택전화&nbsp;&nbsp;
-            [ <input type="checkbox" data-form4="recv-work"> ] 회사전화&nbsp;&nbsp;
-            [ <input type="checkbox" data-form4="recv-mobile"> ] 휴대전화&nbsp;&nbsp;
-            [ <input type="checkbox" data-form4="recv-sms" checked> ] 문자(휴대전화)&nbsp;&nbsp;
-            [ <input type="checkbox" data-form4="recv-email"> ] 전자우편&nbsp;&nbsp;
-            [ <input type="checkbox" data-form4="recv-doc"> ] 문서
+          <th style="${GH}">수신요청</th>
+          <td style="${TD}" colspan="7">
+            ${['자택전화','회사전화','휴대전화','문자(휴대전화)','전자우편','문서'].map((lbl,i) => {
+              const keys = ['recv-home','recv-work','recv-mobile','recv-sms','recv-email','recv-doc'];
+              const def = keys[i]==='recv-sms' ? 'checked' : '';
+              return `<label style="margin-right:10px;font-size:9pt;white-space:nowrap;"><input type="checkbox" data-form4="${keys[i]}" ${def}> ${lbl}</label>`;
+            }).join('')}
           </td>
         </tr>
       </table>
 
-      <p style="margin:12px 0 6px;font-size:10pt;line-height:1.6;">
-        「건설기술인 등급 인정 및 교육·훈련 등에 관한 기준」 제15조의 규정에 따라 신고자료 경정신청서를 제출합니다.
-      </p>
-      <div style="text-align:right;font-size:10pt;margin:8px 30px 4px 0;">
-        ${yyyy} 년 &nbsp;&nbsp; ${mm} 월 &nbsp;&nbsp; ${dd} 일
+      <p style="margin:10px 0 4px;font-size:9pt;line-height:1.6;">「건설기술인 등급 인정 및 교육·훈련 등에 관한 기준」 제15조의 규정에 따라 신고자료 경정신청서를 제출합니다.</p>
+
+      <div style="text-align:right;font-size:9pt;margin:6px 20px 4px 0;">
+        ${yyyy} 년 &nbsp; ${mm} 월 &nbsp; ${dd} 일
       </div>
-      <div style="text-align:center;font-size:10pt;margin:8px 0;">
-        신청인(본인) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (서명 또는 인)
+      <div style="font-size:9pt;margin:6px 0;display:flex;justify-content:center;align-items:center;gap:60px;">
+        <span>신청인(본인)</span>
+        <span style="border-bottom:1px solid #000;width:140px;display:inline-block;">&nbsp;</span>
+        <span style="font-size:7.5pt;color:#888;">(서명 또는 인)</span>
       </div>
-      <div style="font-size:11pt;font-weight:700;margin:14px 0 12px;">○○○○○ 협회장 귀하</div>
+      <div style="font-size:10pt;font-weight:700;margin:10px 0 8px;">○○○○○ 협회장 귀하</div>
 
       <!-- 첨부서류/수수료 -->
-      <table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:8px;">
+      <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
         <tr>
-          <th style="background:#d9d9d9;border:1px solid #000;padding:5px 8px;text-align:center;width:65px;">첨부서류</th>
-          <td style="border:1px solid #000;padding:5px 8px;">관련증빙 자료</td>
-          <td style="border:1px solid #000;padding:5px 8px;text-align:center;width:170px;font-size:9pt;line-height:1.5;">수수료<br>「건설기술 진흥법 시행규칙」<br>제18조제7항에 따른 수수료</td>
+          <th style="${GH}width:60px;">첨부서류</th>
+          <td style="${TD}">관련증빙 자료</td>
+          <td style="${TD}text-align:center;width:160px;font-size:8pt;line-height:1.5;">수수료<br>「건설기술 진흥법 시행규칙」<br>제18조제7항에 따른 수수료</td>
         </tr>
       </table>
 
       <!-- 유의사항 -->
-      <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:0;">
-        <tr>
-          <td colspan="3" style="background:#d9d9d9;border:1px solid #000;padding:3px;text-align:center;font-weight:700;">유의사항</td>
-        </tr>
-        <tr>
-          <td colspan="3" style="border:1px solid #000;padding:6px 8px;font-size:9pt;line-height:1.7;">
-            1. 신청인(본인)의 서명 또는 인에는 신청인 본인이 직접 서명 또는 날인해야 하며, 다른 사람이 이를 위조하는 경우「형법」 제239조에 따라 처벌 받을 수 있습니다.<br>
-            2. 건설기술인 본인이 작성하고 서명한 후 직접 제출하거나 대리인이 제출할 수 있으며, 대리인이 제출 시 실명확인을 위해 아래의 기재사항을 적어야 합니다.<br>
-            3. 대리인 신청 또는 우편신청 시 본인 신청 사실여부 확인 후 접수 처리됩니다.<br>
-            4. 경정결과에 따라 등급이 재산정되어 변동될 수 있으며 반납하지 않은 경력증의 부정사용(분야변경 또는 등급하락 이전 경력증의 사용을 말합니다)·대여(자격 또는 경력증)·도용 또는 거짓신고 등은 관련규정에 따라 처분을 받게 됩니다.
-          </td>
-        </tr>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:0;">
+        <tr><td style="background:#d9d9d9;border:1px solid #000;padding:2px;text-align:center;font-weight:700;font-size:8.5pt;">유의사항</td></tr>
+        <tr><td style="border:1px solid #000;padding:5px 7px;font-size:8pt;line-height:1.7;">
+          1. 신청인(본인)의 서명 또는 인에는 신청인 본인이 직접 서명 또는 날인해야 하며, 다른 사람이 이를 위조하는 경우「형법」 제239조에 따라 처벌 받을 수 있습니다.<br>
+          2. 건설기술인 본인이 작성하고 서명한 후 직접 제출하거나 대리인이 제출할 수 있으며, 대리인이 제출 시 실명확인을 위해 아래의 기재사항을 적어야 합니다.<br>
+          3. 대리인 신청 또는 우편신청 시 본인 신청 사실여부 확인 후 접수 처리됩니다.<br>
+          4. 경정결과에 따라 등급이 재산정되어 변동될 수 있으며 반납하지 않은 경력증의 부정사용(분야변경 또는 등급하락 이전 경력증의 사용을 말합니다)·대여(자격 또는 경력증)·도용 또는 거짓신고 등은 관련규정에 따라 처분을 받게 됩니다.
+        </td></tr>
       </table>
 
       <!-- 대리신청인 -->
-      <table style="width:100%;border-collapse:collapse;font-size:10pt;margin-top:0;">
+      <table style="width:100%;border-collapse:collapse;margin-top:0;">
         <tr>
-          <th style="background:#d9d9d9;border:1px solid #000;padding:5px 6px;text-align:center;width:65px;">대리신청인</th>
-          <th style="background:#d9d9d9;border:1px solid #000;padding:4px 8px;text-align:center;width:40px;">성명</th>
-          <td style="border:1px solid #000;padding:5px 8px;width:120px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="font-size:9pt;">(서명 또는 인)</span></td>
-          <th style="background:#d9d9d9;border:1px solid #000;padding:4px 8px;text-align:center;width:55px;">생년월일</th>
-          <td style="border:1px solid #000;padding:5px 8px;"></td>
-          <th style="background:#d9d9d9;border:1px solid #000;padding:4px 8px;text-align:center;width:40px;">연락처</th>
-          <td style="border:1px solid #000;padding:5px 8px;"></td>
+          <th style="${GH}" rowspan="1">대리신청인</th>
+          <th style="${GH}width:35px;">성명</th>
+          <td style="${TD}width:110px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="font-size:7.5pt;color:#888;">(서명 또는 인)</span></td>
+          <th style="${GH}width:50px;">생년월일</th>
+          <td style="${TD}"></td>
+          <th style="${GH}width:35px;">연락처</th>
+          <td style="${TD}"></td>
         </tr>
       </table>
-      <div style="text-align:right;font-size:8pt;margin-top:4px;">210㎜×297㎜[일반용지 60g/㎡(재활용품)]</div>
+      <div style="text-align:right;font-size:7.5pt;color:#555;margin-top:3px;">210㎜×297㎜[일반용지 60g/㎡(재활용품)]</div>
     </div>
   `;
 }
