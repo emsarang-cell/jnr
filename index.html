@@ -1584,8 +1584,8 @@
 
       <!-- 명언 슬라이드 -->
       <div id="quote-slide" style="margin-top:20px;padding:18px 20px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:10px;border-left:3px solid var(--accent);min-height:90px;display:flex;flex-direction:column;justify-content:center;transition:opacity 0.6s ease;">
-        <div id="quote-text" style="font-size:13.5px;color:var(--ink-2);line-height:1.75;font-style:italic;"></div>
-        <div id="quote-author" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:right;"></div>
+        <div id="quote-text" style="font-size:15.5px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink);line-height:1.8;font-style:italic;font-weight:500;"></div>
+        <div id="quote-author" style="font-size:13px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink-2);margin-top:10px;text-align:right;font-weight:600;"></div>
       </div>
       <div style="display:flex;justify-content:center;gap:5px;margin-top:10px;" id="quote-dots"></div>
 
@@ -3608,7 +3608,7 @@ function startQuoteSlide() {
   _quoteTimer = setInterval(() => {
     _quoteCurrent++;
     _showQuote(_quoteCurrent);
-  }, 4000);
+  }, 7000);
 }
 
 function stopQuoteSlide() {
