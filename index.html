@@ -1768,7 +1768,7 @@ const CONFIG = {
 const _rateLimitState = {
   callTimes: [],          // 최근 60초간 호출 timestamp 배열
   MAX_PER_MINUTE: 200,    // Pay-as-you-go: RPM 2,000 중 안전 마진 적용
-  MIN_INTERVAL_MS: 200,   // 호출 간 최소 0.2초 (유료 전환 후 제한 완화)
+  MIN_INTERVAL_MS: 100,   // 호출 간 최소 0.1초 (유료 플랜 병렬 최적화)
   lastCallAt: 0
 };
 
@@ -3830,7 +3830,7 @@ ${text}`;
   try {
     res = await callAnthropic(apiKey, {
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 32000,
+      max_tokens: 16000,
       messages: [{ role: 'user', content: prompt }]
     }, 0, signal);
   } catch (networkErr) {
@@ -4739,7 +4739,8 @@ async function runAnalysis(skipAI) {
 
   // skipAI가 true면 AI 우회. 키가 없어도 우회. 둘 중 하나라도 해당하면 규칙만 사용.
   let useAI = !skipAI && !!(apiKey || CONFIG.mode === 'server');
-  const BATCH_SIZE = 20;  // 유료 전환: 한 번 호출에 20개씩 분석 (기존 8개 → 속도 2.5배 향상)
+  const BATCH_SIZE = 30;  // 유료: 한 번 호출에 30개씩 분석
+  const PARALLEL = 3;    // 동시 병렬 호출 수 (배치 3개 동시 실행)
 
   // ===== 규칙 기반 즉시 분석 모드 =====
   if (!useAI) {
@@ -4786,20 +4787,27 @@ async function runAnalysis(skipAI) {
   // 사용자에게 예상 시간 안내
   if (maskedProjects.length > 0) {
     const batchCount = Math.ceil(maskedProjects.length / BATCH_SIZE);
-    const estSec = Math.ceil(batchCount * 1.5);  // 유료 전환: 호출 1회당 약 1.5초
+    const parallelBatches = Math.ceil(batchCount / PARALLEL);
+    const estSec = Math.ceil(parallelBatches * 2);
     if (batchCount > 1) {
-      toast(`📊 ${maskedProjects.length}건을 ${batchCount}회 묶음 호출 — 고성능 모드로 약 ${estSec}초 예상`, 4000);
+      toast(`📊 ${maskedProjects.length}건을 ${PARALLEL}개 병렬 호출 — 약 ${estSec}초 예상`, 4000);
     }
   }
 
   // 한도 초과 자동 전환 플래그
   let autoFallbackMode = false;
 
+  // 배치 목록 생성
+  const batches = [];
   for (let start = 0; start < maskedProjects.length; start += BATCH_SIZE) {
-    // 분석 중단 체크 (배치마다)
+    const end = Math.min(start + BATCH_SIZE, maskedProjects.length);
+    batches.push({ start, end });
+  }
+
+  // PARALLEL개씩 묶어서 병렬 처리
+  for (let pi = 0; pi < batches.length; pi += PARALLEL) {
     if (analysisAborted) {
-      // 남은 항목은 규칙 기반으로 즉시 채워서 결과 보여주기
-      for (let i = start; i < maskedProjects.length; i++) {
+      for (let i = batches[pi].start; i < maskedProjects.length; i++) {
         const p = maskedProjects[i];
         const original = projects[i];
         const r = fallbackResultFor(p, { currentIndex: i, allProjects: maskedProjects, personalInfo: personalInfo });
@@ -4808,7 +4816,7 @@ async function runAnalysis(skipAI) {
         r.주의사항 = '(분석 중단으로 규칙 기반 결과로 대체) ' + (r.주의사항 || '');
         results[i] = sanitize(r, p, allPre[i]);
       }
-      toast(`🛑 분석 중단됨 — 완료 ${start}건은 그대로, 나머지 ${maskedProjects.length - start}건은 규칙 기반 결과로 표시합니다.`, 6000);
+      toast(`🛑 분석 중단됨`, 4000);
       await sleep(300);
       renderResults();
       goView('view-results');
@@ -4816,74 +4824,65 @@ async function runAnalysis(skipAI) {
       return;
     }
 
-    const end = Math.min(start + BATCH_SIZE, maskedProjects.length);
-    const batch = maskedProjects.slice(start, end);
-    const batchPre = allPre.slice(start, end);
+    // 이번 라운드의 배치들 (최대 PARALLEL개)
+    const parallelGroup = batches.slice(pi, pi + PARALLEL);
 
-    // 이 배치의 모든 항목을 '분석중'으로 표시
-    for (let i = start; i < end; i++) {
-      const item = document.getElementById('pg-' + i);
-      item.classList.add('active');
-      item.querySelector('.state').textContent = useAI ? '분석중 (묶음)' : '진단중';
-    }
+    // 분석중 표시
+    parallelGroup.forEach(({ start, end }) => {
+      for (let i = start; i < end; i++) {
+        const item = document.getElementById('pg-' + i);
+        if (item) { item.classList.add('active'); item.querySelector('.state').textContent = '분석중'; }
+      }
+    });
 
-    // 묶음 분석 호출 (실패 시 항목별로 fallback)
-    let batchResults = null;
-    if (useAI && !autoFallbackMode) {
-      try {
-        const prompt = buildBatchPrompt(batch, batchPre);
-        batchResults = await callClaudeBatch(apiKey, prompt, batch.length);
-      } catch (err) {
-        console.error('Batch analyze error:', err);
-        const errMsg = err.message || '';
-        // 한도/키 만료/무효 등 회복 불가능한 에러 → 즉시 전체 모드 전환
-        const isHardFail = /한도|quota|rate.?limit|429|exceeded|만료|expired|유효하지|not valid|invalid|API key/i.test(errMsg);
-        if (isHardFail) {
-          autoFallbackMode = true;
-          toast(`⚠️ AI 호출 불가 (${errMsg.split('\n')[0].slice(0, 60)}) → 나머지 ${maskedProjects.length - start}건을 즉시 규칙 기반으로 전환합니다.`, 8000);
-        } else if (start === 0) {
-          toast(`AI 분석 실패: ${errMsg.split('\n')[0]}. 규칙 기반 결과로 진행합니다.`, 5500);
+    // 병렬 호출
+    const parallelTasks = parallelGroup.map(async ({ start, end }) => {
+      const batch = maskedProjects.slice(start, end);
+      const batchPre = allPre.slice(start, end);
+      let batchResults = null;
+
+      if (useAI && !autoFallbackMode) {
+        try {
+          const prompt = buildBatchPrompt(batch, batchPre);
+          batchResults = await callClaudeBatch(apiKey, prompt, batch.length);
+        } catch (err) {
+          const errMsg = err.message || '';
+          const isHardFail = /한도|quota|rate.?limit|429|exceeded|만료|expired|유효하지|not valid|invalid|API key/i.test(errMsg);
+          if (isHardFail) {
+            autoFallbackMode = true;
+            toast(`⚠️ AI 호출 불가 → 규칙 기반으로 전환합니다.`, 5000);
+          }
         }
       }
-    } else if (!useAI || autoFallbackMode) {
-      await sleep(50);
-    }
+      return { start, end, batch, batchPre, batchResults };
+    });
 
-    // 각 항목에 결과 매핑
-    for (let j = 0; j < batch.length; j++) {
-      const i = start + j;
-      const p = batch[j];
-      const original = projects[i];
-      const pre = batchPre[j];
+    const parallelResults = await Promise.all(parallelTasks);
 
-      let result;
-      if (batchResults && batchResults[j]) {
-        // 묶음 응답에는 프로젝트명/참여기간/현재_기재사항이 없으므로 sanitize가 채워줌
-        result = sanitize(batchResults[j], p, pre);
-      } else {
-        result = fallbackResultFor(p, { currentIndex: i, allProjects: maskedProjects, personalInfo: personalInfo });
-        if (useAI && batchResults === null) {
-          result.주의사항 = '(AI 묶음 분석 실패로 규칙 기반 결과로 대체) ' + (result.주의사항 || '');
+    // 결과 매핑
+    parallelResults.forEach(({ start, batch, batchPre, batchResults }) => {
+      for (let j = 0; j < batch.length; j++) {
+        const i = start + j;
+        const p = batch[j];
+        const original = projects[i];
+        const pre = batchPre[j];
+
+        let result;
+        if (batchResults && batchResults[j]) {
+          result = sanitize(batchResults[j], p, pre);
+        } else {
+          result = fallbackResultFor(p, { currentIndex: i, allProjects: maskedProjects, personalInfo: personalInfo });
+          if (useAI && batchResults === null) result.주의사항 = '(AI 분석 실패 → 규칙 기반) ' + (result.주의사항 || '');
         }
-      }
 
-      // 결과의 마스킹된 프로젝트명·발주자를 원본으로 복원
-      if (maskingChoices.project.name && result.프로젝트명 && /\[PROJECT_/.test(result.프로젝트명)) {
-        result.프로젝트명 = original.name;
-      }
-      if (maskingChoices.project.owner && result.현재_기재사항 && result.현재_기재사항.발주자 === '[MASKED_OWNER]') {
-        result.현재_기재사항.발주자 = original.owner;
-      }
+        if (maskingChoices.project.name && result.프로젝트명 && /\[PROJECT_/.test(result.프로젝트명)) result.프로젝트명 = original.name;
+        if (maskingChoices.project.owner && result.현재_기재사항 && result.현재_기재사항.발주자 === '[MASKED_OWNER]') result.현재_기재사항.발주자 = original.owner;
 
-      results[i] = result;
-      const item = document.getElementById('pg-' + i);
-      item.classList.remove('active');
-      item.classList.add('done');
-      item.querySelector('.state').textContent = '완료';
-    }
-
-    // 다음 배치 전: Rate Limiter가 자동으로 처리하므로 별도 sleep 불필요
-    // (callAnthropic 내부에서 분당 13회 / 호출 간 4.5초 강제 적용 중)
+        results[i] = result;
+        const item = document.getElementById('pg-' + i);
+        if (item) { item.classList.remove('active'); item.classList.add('done'); item.querySelector('.state').textContent = '완료'; }
+      }
+    });
   }
 
   await sleep(400);
