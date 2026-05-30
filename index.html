@@ -6434,8 +6434,8 @@ function renderForm4(applied, agg) {
       <div style="text-align:center;font-size:17pt;font-weight:800;letter-spacing:6px;margin:14px 0 16px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;">신고자료 경정신청서</div>
       <div style="font-size:8pt;margin-bottom:3px;">※ 어두운 칸은 신청인이 적지 않습니다.</div>
 
+      <!-- 접수 행 (협회 작성란) - 별도 테이블, 4칸 균등 -->
       <table style="width:100%;border-collapse:collapse;border-left:none;border-right:none;table-layout:fixed;">
-        <!-- 접수 행 (협회 작성란 - 회색, 4칸 균등) -->
         <colgroup><col style="width:25%;"><col style="width:25%;"><col style="width:25%;"><col style="width:25%;"></colgroup>
         <tr>
           <td style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:8pt;font-weight:600;height:40px;border-left:none;">접수번호</td>
@@ -6443,6 +6443,10 @@ function renderForm4(applied, agg) {
           <td style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:8pt;font-weight:600;height:40px;border-left:1px solid #000;">실명확인</td>
           <td style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:8pt;font-weight:600;height:40px;border-left:1px solid #000;border-right:none;">처리기간 <span style="font-weight:400;">10일</span></td>
         </tr>
+      </table>
+
+      <!-- 본문 테이블 (원래 8칸 구조 유지) -->
+      <table style="width:100%;border-collapse:collapse;border-left:none;border-right:none;">
         <!-- 성명/생년월일 (접수행과 이중선 구분) -->
         <tr>
           <th style="${LH}${DBL}border-left:none;" rowspan="3">신청인<br>인적사항</th>
