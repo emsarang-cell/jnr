@@ -1172,9 +1172,11 @@
 
   /* ====== PRINT ====== */
   @page {
-    margin: 10mm;
-    size: A4;
+    size: A4 portrait;
+    margin: 12mm 10mm;   /* 상하 12mm, 좌우 10mm — 서식 여백 적정화 */
   }
+  /* 일부 브라우저에서 머리글/바닥글 여백 최소화 시도 */
+  @page :first { margin-top: 12mm; }
   @media print {
     body { background: white; }
     .no-print { display: none !important; }
@@ -6295,12 +6297,16 @@ function renderForm4(applied, agg) {
   const today = new Date();
   const yyyy = today.getFullYear(), mm = today.getMonth()+1, dd = today.getDate();
 
-  // 회색 th 스타일
+  // 회색 th 스타일 (협회 작성란 - 접수번호/접수일 등 상단만)
   const GH = 'background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;vertical-align:middle;font-weight:600;font-size:9pt;white-space:nowrap;';
-  // 일반 td 스타일
-  const TD = 'border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:9pt;';
-  // 입력 가능 흰색 td (접수번호 등)
+  // 좌측 항목 라벨 (배경색 없음, 좌우 테두리는 별도 처리)
+  const LH = 'border-top:1px solid #000;border-bottom:1px solid #000;border-right:1px solid #000;padding:4px 6px;text-align:center;vertical-align:middle;font-weight:600;font-size:9pt;white-space:nowrap;background:#fff;';
+  // 일반 td 스타일 (좌우 외곽 테두리 없음)
+  const TD = 'border-top:1px solid #000;border-bottom:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:9pt;';
+  // 입력 가능 흰색 td
   const TDW = 'border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:9pt;background:#fff;';
+  // 이중선 구분 (항목 사이 얇은 2줄)
+  const DBL = 'border-top:3px double #000;';
 
   // 신청사항 체크박스 (5+5 두 줄)
   const _mkReq = opt => '<label style="margin-right:12px;white-space:nowrap;font-size:9pt;"><input type="checkbox" data-form4="req-' + opt + '" ' + (checkedSet.has(opt)?'checked':'') + '> ' + opt + '</label>';
@@ -6332,26 +6338,26 @@ function renderForm4(applied, agg) {
     <div id="example-f4" class="no-print" style="display:none; margin-bottom:16px; padding:16px; background:#fffbea; border:1px solid #f59e0b; border-radius:8px;"><div style="font-weight:700; color:#d97706; margin-bottom:10px; font-size:13px;">✍️ 신고자료 경정신청서 작성예시 (협회 서식 원본)</div><img src="${EXAMPLE_IMAGES['form4']}" style="width:100%; max-width:760px; display:block; margin:0 auto; border:1px solid #ddd; border-radius:4px;" alt="작성예시"></div>
     <div id="official-form4" class="official-form" style="font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:9pt;padding:12mm 15mm;max-width:210mm;margin:0 auto;background:#fff;color:#000;min-width:auto;">
       <div style="font-size:8pt;margin-bottom:2px;">■ 건설기술인 등급 인정 및 교육·훈련 등에 관한 기준[별지 제4호서식]</div>
-      <div style="text-align:center;font-size:15pt;font-weight:700;letter-spacing:8px;margin:5px 0 8px;">신고자료 경정신청서</div>
+      <div style="text-align:center;font-size:17pt;font-weight:800;letter-spacing:6px;margin:6px 0 8px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;">신고자료 경정신청서</div>
       <div style="font-size:8pt;margin-bottom:3px;">※ 어두운 칸은 신청인이 적지 않습니다.</div>
 
-      <table style="width:100%;border-collapse:collapse;">
+      <table style="width:100%;border-collapse:collapse;border-left:none;border-right:none;">
         <!-- 접수 행 (협회 작성란 - 회색) -->
         <tr>
-          <th style="${GH}width:55px;">접수번호</th>
+          <th style="${GH}width:55px;border-left:none;">접수번호</th>
           <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;width:90px;">&nbsp;</td>
           <th style="${GH}">접수일</th>
           <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;width:90px;">&nbsp;</td>
           <th style="${GH}">실명확인</th>
           <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;width:90px;">&nbsp;</td>
           <th style="${GH}">처리기간</th>
-          <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;width:50px;">10일</td>
+          <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;width:50px;white-space:nowrap;border-right:none;">10일</td>
         </tr>
-        <!-- 성명/생년월일 -->
+        <!-- 성명/생년월일 (접수행과 이중선 구분) -->
         <tr>
-          <th style="${GH}" rowspan="3">신청인<br>인적사항</th>
-          <td style="${TD}" colspan="3"><strong style="font-size:9pt;">성명</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="name" style="letter-spacing:3px;font-size:9pt;">${esc(pi.name||'')}</span></td>
-          <td style="${TD}" colspan="4"><strong style="font-size:9pt;">생년월일</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="birth" style="font-size:9pt;">${esc(pi.birthDate||'')}</span></td>
+          <th style="${LH}${DBL}border-left:none;" rowspan="3">신청인<br>인적사항</th>
+          <td style="${TD}${DBL}" colspan="3"><strong style="font-size:9pt;">성명</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="name" style="letter-spacing:3px;font-size:9pt;">${esc(pi.name||'')}</span></td>
+          <td style="${TD}${DBL}border-right:none;" colspan="4"><strong style="font-size:9pt;">생년월일</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="birth" style="font-size:9pt;">${esc(pi.birthDate||'')}</span></td>
         </tr>
         <!-- 연락처 -->
         <tr>
@@ -6363,39 +6369,39 @@ function renderForm4(applied, agg) {
             <div style="font-size:8pt;color:#555;">전화번호</div>
             <span class="editable-field" contenteditable="true" data-form4="phone" style="font-size:9pt;min-width:80px;">${esc(pi.phone||'')}</span>
           </td>
-          <td style="${TD}" colspan="3">
+          <td style="${TD}border-right:none;" colspan="3">
             <div style="font-size:8pt;color:#555;">휴대전화번호</div>
             <span class="editable-field" contenteditable="true" data-form4="mobile" style="font-size:9pt;min-width:80px;">${esc(pi.mobile||'')}</span>
           </td>
         </tr>
         <!-- 주소 -->
         <tr>
-          <td style="${TD}" colspan="7"><strong style="font-size:9pt;">주소</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="address" style="font-size:9pt;min-width:260px;">${esc(pi.address||'')}</span></td>
+          <td style="${TD}border-right:none;" colspan="7"><strong style="font-size:9pt;">주소</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="address" style="font-size:9pt;min-width:260px;">${esc(pi.address||'')}</span></td>
         </tr>
-        <!-- 신청사항 -->
+        <!-- 신청사항 (이중선 구분) -->
         <tr>
-          <th style="${GH}">신청사항<br>(✔표시)</th>
-          <td style="${TD}" colspan="7">
+          <th style="${LH}${DBL}border-left:none;">신청사항<br>(V표시)</th>
+          <td style="${TD}${DBL}border-right:none;" colspan="7">
             <div style="line-height:1.9;">${line1}</div>
             <div style="line-height:1.9;">${line2}</div>
           </td>
         </tr>
-        <!-- 관련증빙자료 -->
+        <!-- 관련증빙자료 (이중선 구분) -->
         <tr>
-          <th style="${GH}">관련증빙<br>자료(✔표시)</th>
-          <td style="${TD}" colspan="7">${docHtml}</td>
+          <th style="${LH}${DBL}border-left:none;">관련증빙<br>자료(V표시)</th>
+          <td style="${TD}${DBL}border-right:none;" colspan="7">${docHtml}</td>
         </tr>
-        <!-- 미반납 사유 -->
+        <!-- 미반납 사유 (이중선 구분) -->
         <tr>
-          <th style="${GH}">건설기술<br>경력증<br>미반납 사유</th>
-          <td style="${TD}" colspan="7" style="height:60px;vertical-align:top;">
+          <th style="${LH}${DBL}border-left:none;">건설기술<br>경력증<br>미반납 사유</th>
+          <td style="${TD}${DBL}border-right:none;height:60px;vertical-align:top;" colspan="7">
             <span class="editable-field" contenteditable="true" data-form4="cert-reason" style="display:block;min-height:45px;font-size:9pt;"></span>
           </td>
         </tr>
         <!-- 수신요청 -->
         <tr>
-          <th style="${GH}">수신요청</th>
-          <td style="${TD}" colspan="7">${recvHtml}</td>
+          <th style="${LH}border-left:none;">수신요청</th>
+          <td style="${TD}border-right:none;" colspan="7">${recvHtml}</td>
         </tr>
       </table>
 
@@ -6438,16 +6444,16 @@ function renderForm4(applied, agg) {
       <!-- 대리신청인 -->
       <table style="width:100%;border-collapse:collapse;margin-top:0;table-layout:fixed;">
         <colgroup>
-          <col style="width:50px;">
-          <col style="width:28px;">
-          <col style="width:28%;">
+          <col style="width:70px;">
+          <col style="width:32px;">
+          <col style="width:26%;">
           <col style="width:38px;">
-          <col style="width:24%;">
+          <col style="width:22%;">
           <col style="width:38px;">
           <col>
         </colgroup>
         <tr>
-          <th style="${GH}font-size:7.5pt;padding:5px 1px;">대리<br>신청인</th>
+          <th style="${GH}font-size:8pt;padding:5px 4px;white-space:nowrap;">대리신청인</th>
           <th style="${GH}font-size:8pt;padding:4px 1px;">성명</th>
           <td style="${TD}padding:4px 6px;"><span class="editable-field" contenteditable="true" data-form4="agent-name" style="font-size:9pt;min-width:80px;"></span></td>
           <th style="${GH}font-size:7.5pt;padding:5px 1px;">생년<br>월일</th>
@@ -6519,7 +6525,7 @@ function renderForm14(applied, agg) {
           <th style="${GH}">실명확인</th>
           <td style="${GRAY}width:90px;">&nbsp;</td>
           <th style="${GH}">처리기간</th>
-          <td style="${GRAY}text-align:center;width:45px;">즉시</td>
+          <td style="${GRAY}text-align:center;width:45px;white-space:nowrap;">즉시</td>
         </tr>
         <!-- 인적사항 -->
         <tr>
@@ -6955,51 +6961,89 @@ function printForm4() {
   setTimeout(() => printCurrentForm(), 100);
 }
 
-function printCurrentForm() {
-  const tabMap = {
-    'form4': '별지 제4호',
-    'form14': '별지 제14호',
-    'letter-personal': '사유서(본인)',
-    'letter-company': '사유서(업체)'
-  };
+// 인쇄용 공통 CSS (새 창에 삽입)
+function _printStyles() {
+  return `
+    @page { size: A4 portrait; margin: 12mm 10mm; }
+    html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+    body { font-family: '맑은 고딕','Malgun Gothic',sans-serif; color: #000; background: #fff; font-size: 9pt; }
+    table { border-collapse: collapse !important; width: 100%; }
+    th, td { border: 1px solid #000; }
+    .official-form { padding: 0 !important; max-width: none !important; min-width: 0 !important; margin: 0 auto !important; width: 100% !important; box-shadow: none !important; }
+    .no-print { display: none !important; }
+    .editable-field { background: transparent !important; border: none !important; padding: 0 !important; min-width: 0 !important; }
+    .editable-field:empty::before { content: '' !important; }
+    .reason-textarea { background: transparent !important; border: 1px solid #999 !important; width: 100%; white-space: pre-wrap; word-wrap: break-word; overflow: visible; resize: none; font-family: inherit; padding: 8px; }
+    input[type="checkbox"] { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border: 1.5px solid #000 !important; background: #fff !important; display: inline-block; vertical-align: middle; position: relative; border-radius: 2px; }
+    input[type="checkbox"]:checked { background: #000 !important; border-color: #000 !important; }
+    input[type="checkbox"]:checked::after { content: '✔'; font-size: 12px; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-weight: 900; }
+    .form-panel { page-break-after: always; }
+    .form-panel:last-child { page-break-after: auto; }
+  `;
+}
 
-  // 현재 탭만 인쇄, 나머지 panel 숨김
-  document.querySelectorAll('.form-panel').forEach(p => {
-    p.style.display = p.id === 'form-panel-' + currentFormTab ? 'block' : 'none';
-  });
+// 새 창에 서식을 복사해 인쇄 → URL/날짜/페이지번호가 안 찍힘
+function _printInNewWindow(html) {
+  // textarea 값을 인쇄 시점 그대로 반영 (value는 innerHTML에 안 담기므로 처리)
+  const win = window.open('', '_blank');
+  if (!win) {
+    // 팝업 차단 시 폴백: 기존 방식
+    expandAllTextareasForPrint();
+    setTimeout(() => window.print(), 200);
+    return;
+  }
+  win.document.open();
+  win.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title></title><style>' + _printStyles() + '</style></head><body>' + html + '</body></html>');
+  win.document.close();
 
-  // 페이지 제목 임시 변경
-  const origTitle = document.title;
-  document.title = `경정신청서_${tabMap[currentFormTab] || '서식'}_${personalInfo.name || '제출용'}`;
-
-  // textarea 전체 내용 보이게 확장
-  expandAllTextareasForPrint();
-
+  // 렌더 후 인쇄
   setTimeout(() => {
-    window.print();
-    // 인쇄 후 원상복구
-    document.title = origTitle;
-    switchFormTab(currentFormTab);
-  }, 200);
+    try {
+      win.focus();
+      win.print();
+      setTimeout(() => win.close(), 500);
+    } catch(e) {
+      console.warn('인쇄 실패:', e);
+    }
+  }, 400);
+}
+
+// 패널 HTML 추출 (textarea 값을 텍스트로 반영)
+function _extractPanelHtml(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return '';
+  const clone = panel.cloneNode(true);
+  // 원본 textarea 값 → 복제본에 반영
+  const origTAs = panel.querySelectorAll('textarea');
+  const cloneTAs = clone.querySelectorAll('textarea');
+  origTAs.forEach((ta, i) => {
+    if (cloneTAs[i]) {
+      cloneTAs[i].textContent = ta.value;
+      cloneTAs[i].setAttribute('rows', Math.max(3, ta.value.split('\n').length + 1));
+    }
+  });
+  // 원본 체크박스 상태 → 복제본 반영
+  const origCB = panel.querySelectorAll('input[type="checkbox"]');
+  const cloneCB = clone.querySelectorAll('input[type="checkbox"]');
+  origCB.forEach((cb, i) => { if (cloneCB[i] && cb.checked) cloneCB[i].setAttribute('checked', 'checked'); });
+  // contenteditable 내용은 innerHTML에 이미 포함됨
+  return clone.outerHTML;
+}
+
+function printCurrentForm() {
+  const panelId = 'form-panel-' + currentFormTab;
+  const html = _extractPanelHtml(panelId);
+  _printInNewWindow(html);
 }
 
 function printAllForms() {
-  // 전체 탭 동시 표시 후 인쇄
-  document.querySelectorAll('.form-panel').forEach(p => p.style.display = 'block');
-  document.body.classList.add('printing-all');
-
-  const origTitle = document.title;
-  document.title = `경정신청서_전체4종_${personalInfo.name || '제출용'}`;
-
-  // textarea 전체 내용 보이게 확장
-  expandAllTextareasForPrint();
-
-  setTimeout(() => {
-    window.print();
-    document.title = origTitle;
-    document.body.classList.remove('printing-all');
-    switchFormTab(currentFormTab);  // 원래 탭으로
-  }, 300);
+  const ids = ['form-panel-form4', 'form-panel-form14', 'form-panel-letter-personal', 'form-panel-letter-company'];
+  const html = ids.map(id => {
+    const h = _extractPanelHtml(id);
+    return h ? '<div class="form-panel">' + h + '</div>' : '';
+  }).join('');
+  _printInNewWindow(html);
 }
 
 </script>
