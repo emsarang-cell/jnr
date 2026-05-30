@@ -1173,10 +1173,8 @@
   /* ====== PRINT ====== */
   @page {
     size: A4 portrait;
-    margin: 12mm 10mm;   /* 상하 12mm, 좌우 10mm — 서식 여백 적정화 */
+    margin: 15mm 15mm;   /* 상하 15mm, 좌우 15mm — 여백 적정화 */
   }
-  /* 일부 브라우저에서 머리글/바닥글 여백 최소화 시도 */
-  @page :first { margin-top: 12mm; }
   @media print {
     body { background: white; }
     .no-print { display: none !important; }
@@ -1192,9 +1190,10 @@
     }
     .form-panel:last-child { page-break-after: auto; }
     .official-form {
-      padding: 20px 30px; min-width: 0;
-      box-shadow: none;
+      padding: 0 !important; min-width: 0; width: 100% !important; max-width: none !important;
+      box-shadow: none; margin: 0 !important;
     }
+    .official-form table { width: 100% !important; }
     .editable-field {
       background: transparent !important; border: none !important;
     }
@@ -6351,7 +6350,7 @@ function renderForm4(applied, agg) {
           <th style="${GH}">실명확인</th>
           <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;width:90px;">&nbsp;</td>
           <th style="${GH}">처리기간</th>
-          <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;width:50px;white-space:nowrap;border-right:none;">10일</td>
+          <td style="background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;width:50px;white-space:nowrap;border-right:none;font-size:9pt;font-weight:400;">10일</td>
         </tr>
         <!-- 성명/생년월일 (접수행과 이중선 구분) -->
         <tr>
@@ -6961,89 +6960,33 @@ function printForm4() {
   setTimeout(() => printCurrentForm(), 100);
 }
 
-// 인쇄용 공통 CSS (새 창에 삽입)
-function _printStyles() {
-  return `
-    @page { size: A4 portrait; margin: 12mm 10mm; }
-    html, body { margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
-    body { font-family: '맑은 고딕','Malgun Gothic',sans-serif; color: #000; background: #fff; font-size: 9pt; }
-    table { border-collapse: collapse !important; width: 100%; }
-    th, td { border: 1px solid #000; }
-    .official-form { padding: 0 !important; max-width: none !important; min-width: 0 !important; margin: 0 auto !important; width: 100% !important; box-shadow: none !important; }
-    .no-print { display: none !important; }
-    .editable-field { background: transparent !important; border: none !important; padding: 0 !important; min-width: 0 !important; }
-    .editable-field:empty::before { content: '' !important; }
-    .reason-textarea { background: transparent !important; border: 1px solid #999 !important; width: 100%; white-space: pre-wrap; word-wrap: break-word; overflow: visible; resize: none; font-family: inherit; padding: 8px; }
-    input[type="checkbox"] { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border: 1.5px solid #000 !important; background: #fff !important; display: inline-block; vertical-align: middle; position: relative; border-radius: 2px; }
-    input[type="checkbox"]:checked { background: #000 !important; border-color: #000 !important; }
-    input[type="checkbox"]:checked::after { content: '✔'; font-size: 12px; color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-weight: 900; }
-    .form-panel { page-break-after: always; }
-    .form-panel:last-child { page-break-after: auto; }
-  `;
-}
-
-// 새 창에 서식을 복사해 인쇄 → URL/날짜/페이지번호가 안 찍힘
-function _printInNewWindow(html) {
-  // textarea 값을 인쇄 시점 그대로 반영 (value는 innerHTML에 안 담기므로 처리)
-  const win = window.open('', '_blank');
-  if (!win) {
-    // 팝업 차단 시 폴백: 기존 방식
-    expandAllTextareasForPrint();
-    setTimeout(() => window.print(), 200);
-    return;
-  }
-  win.document.open();
-  win.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title></title><style>' + _printStyles() + '</style></head><body>' + html + '</body></html>');
-  win.document.close();
-
-  // 렌더 후 인쇄
-  setTimeout(() => {
-    try {
-      win.focus();
-      win.print();
-      setTimeout(() => win.close(), 500);
-    } catch(e) {
-      console.warn('인쇄 실패:', e);
-    }
-  }, 400);
-}
-
-// 패널 HTML 추출 (textarea 값을 텍스트로 반영)
-function _extractPanelHtml(panelId) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return '';
-  const clone = panel.cloneNode(true);
-  // 원본 textarea 값 → 복제본에 반영
-  const origTAs = panel.querySelectorAll('textarea');
-  const cloneTAs = clone.querySelectorAll('textarea');
-  origTAs.forEach((ta, i) => {
-    if (cloneTAs[i]) {
-      cloneTAs[i].textContent = ta.value;
-      cloneTAs[i].setAttribute('rows', Math.max(3, ta.value.split('\n').length + 1));
-    }
-  });
-  // 원본 체크박스 상태 → 복제본 반영
-  const origCB = panel.querySelectorAll('input[type="checkbox"]');
-  const cloneCB = clone.querySelectorAll('input[type="checkbox"]');
-  origCB.forEach((cb, i) => { if (cloneCB[i] && cb.checked) cloneCB[i].setAttribute('checked', 'checked'); });
-  // contenteditable 내용은 innerHTML에 이미 포함됨
-  return clone.outerHTML;
-}
-
 function printCurrentForm() {
-  const panelId = 'form-panel-' + currentFormTab;
-  const html = _extractPanelHtml(panelId);
-  _printInNewWindow(html);
+  // 현재 탭만 표시
+  document.querySelectorAll('.form-panel').forEach(p => {
+    p.style.display = p.id === 'form-panel-' + currentFormTab ? 'block' : 'none';
+  });
+  const origTitle = document.title;
+  document.title = '\u200b';
+  expandAllTextareasForPrint();
+  setTimeout(() => {
+    window.print();
+    document.title = origTitle;
+    switchFormTab(currentFormTab);
+  }, 250);
 }
 
 function printAllForms() {
-  const ids = ['form-panel-form4', 'form-panel-form14', 'form-panel-letter-personal', 'form-panel-letter-company'];
-  const html = ids.map(id => {
-    const h = _extractPanelHtml(id);
-    return h ? '<div class="form-panel">' + h + '</div>' : '';
-  }).join('');
-  _printInNewWindow(html);
+  document.querySelectorAll('.form-panel').forEach(p => p.style.display = 'block');
+  document.body.classList.add('printing-all');
+  const origTitle = document.title;
+  document.title = '\u200b';
+  expandAllTextareasForPrint();
+  setTimeout(() => {
+    window.print();
+    document.title = origTitle;
+    document.body.classList.remove('printing-all');
+    switchFormTab(currentFormTab);
+  }, 300);
 }
 
 </script>
