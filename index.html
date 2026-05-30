@@ -736,6 +736,12 @@
     color: var(--ink);
     font-weight: 500;
   }
+  .pi-r-field.wide { grid-column: span 2; border-right: none; }
+  .grade-detail { font-size: 13px; line-height: 1.55; }
+  .grade-detail .gd-grp { font-weight: 700; color: var(--ink); margin-top: 7px; }
+  .grade-detail .gd-grp:first-child { margin-top: 0; }
+  .grade-detail .gd-row { color: var(--ink-2); }
+  .grade-detail .gd-row span { display: inline-block; min-width: 52px; color: var(--muted); font-size: 11px; letter-spacing: 0.04em; }
 
   /* Upload steps */
   .upload-steps { list-style: none; padding: 0; margin: 0; }
@@ -1046,6 +1052,7 @@
     .pi-report-grid { grid-template-columns: 1fr 1fr; }
     .pi-r-field:nth-child(3n) { border-right: 1px solid var(--line); }
     .pi-r-field:nth-child(2n) { border-right: none; }
+    .pi-r-field.wide { grid-column: span 2; }
     .steps-grid { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 640px) {
@@ -1152,7 +1159,7 @@
   .official-form table tr > *:first-child { border-left: none !important; }
   .official-form table tr > *:last-child { border-right: none !important; }
   .official-form .editable-field {
-    background: #fafafa; border: 1px dashed #ccc;
+    background: transparent; border: 1px dashed #ccc;
     padding: 2px 5px; border-radius: 3px;
     min-width: 60px; display: inline-block;
     font-size: inherit;
@@ -1180,6 +1187,16 @@
       background: transparent !important;
       border: none !important;
       padding: 0 !important;
+    }
+    .official-form .reason-textarea {
+      background: transparent !important;
+      border: 1px solid #000 !important;
+    }
+    .official-form .change-before,
+    .official-form .change-after,
+    .official-form .change-added {
+      background: transparent !important;
+      -webkit-print-color-adjust: economy; print-color-adjust: economy;
     }
     .official-form .editable-field:empty::before,
     .official-form .editable-field[data-placeholder]:empty::before {
@@ -4266,7 +4283,9 @@ async function extractInfoFromText(apiKey, rawText, signal) {
 - 현재 근무 중이면 endDate="근무중"으로 입력하세요.
 - specialty(전문분야)는 경력증명서 원문에 전문분야 항목이 명시된 경우에만 입력하세요. 원문에 없으면 반드시 빈 문자열("")로 두세요. 담당업무·공사종류·직무분야로 추측해서 채우지 마세요.
 - field(직무분야)도 원문에 직무분야 항목이 명시된 경우에만 입력하세요. 없으면 빈 문자열("")로 두세요.
-- grade 필드에는 대표 등급(특급/고급/중급/초급 중 가장 높은 것) 1개만 입력하세요.
+- grade(대표 등급) 필드에는 특급/고급/중급/초급 중 가장 높은 것 1개만 입력하세요. 여러 분야 등급을 한 문자열로 합치지 마세요.
+- [중요] 기술등급표는 여러 '분야 그룹'(예: "설계·시공 등", "건설사업관리", "품질관리")으로 나뉘고, 각 그룹마다 직무분야·전문분야별 등급이 다르게 기재될 수 있습니다. 반드시 그룹(세로 열)별로 정확히 구분해서 읽고, 한 그룹의 등급을 다른 그룹과 섞지 마세요. 같은 분야명(예: "토목시공")이라도 그룹에 따라 등급이 다를 수 있습니다(예: 설계·시공=중급, 건설사업관리=초급). 각 그룹의 열을 정확히 따라가세요.
+- 기술등급표 전체를 아래 "등급표" 배열로 그룹별 구조화하여 추출하세요. 직무분야/전문분야 각각 [분야명, 등급] 쌍으로 담습니다.
 - 성명에 한자가 병기된 경우(예: 홍길동(洪吉童)) 한글 이름만 추출하세요.
 
 [출력 형식]
@@ -4277,6 +4296,13 @@ async function extractInfoFromText(apiKey, rawText, signal) {
     "분야": "",
     "전문분야": "",
     "등급": "대표 등급 1개 (예: 특급)",
+    "등급표": [
+      {
+        "분야": "분야 그룹명 (예: 설계·시공 등 / 건설사업관리 / 품질관리)",
+        "직무분야": [ { "분야명": "토목", "등급": "특급" }, { "분야명": "안전관리", "등급": "초급" } ],
+        "전문분야": [ { "분야명": "토목시공", "등급": "초급" }, { "분야명": "측량및지형공간정보", "등급": "고급" } ]
+      }
+    ],
     "기술자번호": "",
     "주소": "",
     "전화번호": "",
@@ -4435,7 +4461,8 @@ function mapBasicInfo(info) {
     field:              info.분야               || info.field              || '',
     specialty:          info.전문분야            || info.specialty          || '',
     grade:              info.등급               || info.grade              || '',
-    gradeTable:         Array.isArray(info.gradeTable) ? info.gradeTable : [],
+    gradeTable:         Array.isArray(info.등급표) ? info.등급표
+                     : (Array.isArray(info.gradeTable) ? info.gradeTable : []),
     certNumber:         info.기술자번호          || info.certNumber         || '',
     nationalCertNumber: info.국가기술자격등록번호
                      || info['국가기술자격 등록번호']
@@ -5904,6 +5931,33 @@ function regenerateDraft(i) {
 /* ============================================================
    REPORT
    ============================================================ */
+/* 기술등급 표시: 등급표(분야 그룹별 직무/전문분야 등급)가 있으면 그룹별로,
+   없으면 대표 등급 문자열을 그대로 표시 */
+function renderGradeCell() {
+  const gt = Array.isArray(personalInfo.gradeTable) ? personalInfo.gradeTable : [];
+  if (!gt.length) {
+    return esc(personalInfo.grade || '—');
+  }
+  const fmtList = (arr) => (Array.isArray(arr) ? arr : []).map(d => {
+    const nm = esc(d.분야명 || d.name || '');
+    const gr = d.등급 || d.grade || '';
+    if (!nm) return '';
+    return nm + (gr ? ' (' + esc(gr) + ')' : '');
+  }).filter(Boolean).join(', ');
+
+  const blocks = gt.map(g => {
+    const grp = esc(g.분야 || g.group || '');
+    const duty = fmtList(g.직무분야 || g.duty);
+    const spec = fmtList(g.전문분야 || g.specialty);
+    if (!grp && !duty && !spec) return '';
+    return (grp ? '<div class="gd-grp">' + grp + '</div>' : '')
+      + (duty ? '<div class="gd-row"><span>직무분야</span>' + duty + '</div>' : '')
+      + (spec ? '<div class="gd-row"><span>전문분야</span>' + spec + '</div>' : '');
+  }).filter(Boolean).join('');
+
+  return blocks ? '<div class="grade-detail">' + blocks + '</div>' : esc(personalInfo.grade || '—');
+}
+
 function renderReport() {
   const counts = { 매우높음: 0, 높음: 0, 보통: 0, 낮음: 0 };
   results.forEach(r => { counts[r.경정_필요도] = (counts[r.경정_필요도] || 0) + 1; });
@@ -5922,12 +5976,15 @@ function renderReport() {
     <div class="report-section">
       <h2><span class="n">01</span>분석 대상자 정보</h2>
       <div class="pi-report-grid">
-        ${PI_FIELDS.map(f => `
-          <div class="pi-r-field">
+        ${PI_FIELDS.map(f => {
+          const wide = f.key === 'grade';
+          const val = wide ? renderGradeCell() : esc(personalInfo[f.key] || '—');
+          return `
+          <div class="pi-r-field${wide ? ' wide' : ''}">
             <div class="lbl">${esc(f.label)}</div>
-            <div class="val">${esc(personalInfo[f.key] || '—')}</div>
-          </div>
-        `).join('')}
+            <div class="val">${val}</div>
+          </div>`;
+        }).join('')}
       </div>
     </div>
 
