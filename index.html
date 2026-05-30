@@ -1063,13 +1063,13 @@
     width: 110px; text-align: center;
   }
   .official-form .editable-field {
-    background: #fffbea; border: 1px dashed #f59e0b;
+    background: #fafafa; border: 1px dashed #ccc;
     padding: 2px 5px; border-radius: 3px;
     min-width: 60px; display: inline-block;
     font-size: inherit;
   }
   .official-form .editable-field:focus {
-    outline: 2px solid #f59e0b; background: #fff;
+    outline: 2px solid #3b82f6; background: #fff;
   }
   .official-form .editable-field:empty::before {
     content: '클릭하여 입력'; color: #cbb; font-size: 8pt;
@@ -6363,8 +6363,8 @@ function renderForm4(applied, agg) {
         <!-- 성명/생년월일 (접수행과 이중선 구분) -->
         <tr>
           <th style="${LH}${DBL}border-left:none;" rowspan="3">신청인<br>인적사항</th>
-          <td style="${TD}${DBL}" colspan="3"><strong style="font-size:9pt;">성명</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="name" style="letter-spacing:3px;font-size:9pt;">${esc(pi.name||'')}</span></td>
-          <td style="${TD}${DBL}border-right:none;" colspan="4"><strong style="font-size:9pt;">생년월일</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="birth" style="font-size:9pt;">${esc(pi.birthDate||'')}</span></td>
+          <td style="${TD}${DBL}" colspan="4"><strong style="font-size:9pt;">성명</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="name" style="letter-spacing:3px;font-size:9pt;">${esc(pi.name||'')}</span></td>
+          <td style="${TD}${DBL}border-right:none;" colspan="3"><strong style="font-size:9pt;">생년월일</strong>&nbsp;&nbsp;<span class="editable-field" contenteditable="true" data-form4="birth" style="font-size:9pt;">${esc(pi.birthDate||'')}</span></td>
         </tr>
         <!-- 연락처 -->
         <tr>
