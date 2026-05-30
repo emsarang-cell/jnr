@@ -735,6 +735,9 @@
     font-size: 14px;
     color: var(--ink);
     font-weight: 500;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
   }
   .pi-r-field.wide { grid-column: span 2; border-right: none; }
   .grade-detail { font-size: 13px; line-height: 1.55; }
@@ -4283,7 +4286,7 @@ async function extractInfoFromText(apiKey, rawText, signal) {
 - 현재 근무 중이면 endDate="근무중"으로 입력하세요.
 - specialty(전문분야)는 경력증명서 원문에 전문분야 항목이 명시된 경우에만 입력하세요. 원문에 없으면 반드시 빈 문자열("")로 두세요. 담당업무·공사종류·직무분야로 추측해서 채우지 마세요.
 - field(직무분야)도 원문에 직무분야 항목이 명시된 경우에만 입력하세요. 없으면 빈 문자열("")로 두세요.
-- grade(대표 등급) 필드에는 특급/고급/중급/초급 중 가장 높은 것 1개만 입력하세요. 여러 분야 등급을 한 문자열로 합치지 마세요.
+- grade 필드에는 본인의 모든 직무분야·전문분야 등급을 읽기 쉽게 쉼표로 나열하세요 (예: "토목 특급, 안전관리 초급, 토목시공 초급, 측량및지형공간정보 고급"). 분야 그룹이 여러 개(설계·시공 등 / 건설사업관리 / 품질관리)이면 주된 한 그룹 기준으로만 나열하고 다른 그룹의 등급과 섞지 마세요.
 - [중요] 기술등급표는 여러 '분야 그룹'(예: "설계·시공 등", "건설사업관리", "품질관리")으로 나뉘고, 각 그룹마다 직무분야·전문분야별 등급이 다르게 기재될 수 있습니다. 반드시 그룹(세로 열)별로 정확히 구분해서 읽고, 한 그룹의 등급을 다른 그룹과 섞지 마세요. 같은 분야명(예: "토목시공")이라도 그룹에 따라 등급이 다를 수 있습니다(예: 설계·시공=중급, 건설사업관리=초급). 각 그룹의 열을 정확히 따라가세요.
 - 기술등급표 전체를 아래 "등급표" 배열로 그룹별 구조화하여 추출하세요. 직무분야/전문분야 각각 [분야명, 등급] 쌍으로 담습니다.
 - 성명에 한자가 병기된 경우(예: 홍길동(洪吉童)) 한글 이름만 추출하세요.
@@ -4295,7 +4298,7 @@ async function extractInfoFromText(apiKey, rawText, signal) {
     "생년월일": "",
     "분야": "",
     "전문분야": "",
-    "등급": "대표 등급 1개 (예: 특급)",
+    "등급": "모든 직무·전문분야 등급 나열 (예: 토목 특급, 안전관리 초급, 토목시공 초급, 측량및지형공간정보 고급)",
     "등급표": [
       {
         "분야": "분야 그룹명 (예: 설계·시공 등 / 건설사업관리 / 품질관리)",
@@ -5935,9 +5938,6 @@ function regenerateDraft(i) {
    없으면 대표 등급 문자열을 그대로 표시 */
 function renderGradeCell() {
   const gt = Array.isArray(personalInfo.gradeTable) ? personalInfo.gradeTable : [];
-  if (!gt.length) {
-    return esc(personalInfo.grade || '—');
-  }
   const fmtList = (arr) => (Array.isArray(arr) ? arr : []).map(d => {
     const nm = esc(d.분야명 || d.name || '');
     const gr = d.등급 || d.grade || '';
@@ -5945,17 +5945,25 @@ function renderGradeCell() {
     return nm + (gr ? ' (' + esc(gr) + ')' : '');
   }).filter(Boolean).join(', ');
 
-  const blocks = gt.map(g => {
-    const grp = esc(g.분야 || g.group || '');
-    const duty = fmtList(g.직무분야 || g.duty);
-    const spec = fmtList(g.전문분야 || g.specialty);
-    if (!grp && !duty && !spec) return '';
-    return (grp ? '<div class="gd-grp">' + grp + '</div>' : '')
-      + (duty ? '<div class="gd-row"><span>직무분야</span>' + duty + '</div>' : '')
-      + (spec ? '<div class="gd-row"><span>전문분야</span>' + spec + '</div>' : '');
-  }).filter(Boolean).join('');
+  if (gt.length) {
+    const blocks = gt.map(g => {
+      const grp = esc(g.분야 || g.group || '');
+      const duty = fmtList(g.직무분야 || g.duty);
+      const spec = fmtList(g.전문분야 || g.specialty);
+      if (!grp && !duty && !spec) return '';
+      return (grp ? '<div class="gd-grp">' + grp + '</div>' : '')
+        + (duty ? '<div class="gd-row"><span>직무분야</span>' + duty + '</div>' : '')
+        + (spec ? '<div class="gd-row"><span>전문분야</span>' + spec + '</div>' : '');
+    }).filter(Boolean).join('');
+    if (blocks) return '<div class="grade-detail">' + blocks + '</div>';
+  }
 
-  return blocks ? '<div class="grade-detail">' + blocks + '</div>' : esc(personalInfo.grade || '—');
+  // 등급표가 없으면 grade 문자열을 구분자(/ , 줄바꿈 ;)로 나눠 줄단위로 모두 표시
+  const raw = (personalInfo.grade || '').trim();
+  if (!raw) return '—';
+  const parts = raw.split(/\s*[\/\n;,]+\s*/).map(s => s.trim()).filter(Boolean);
+  if (parts.length <= 1) return esc(raw);
+  return '<div class="grade-detail">' + parts.map(p => '<div class="gd-row">' + esc(p) + '</div>').join('') + '</div>';
 }
 
 function renderReport() {
