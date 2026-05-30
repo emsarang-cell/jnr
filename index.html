@@ -348,6 +348,17 @@
     position: fixed; inset: 0; background: rgba(28, 24, 20, 0.55);
     z-index: 100; display: none; align-items: flex-start; justify-content: center;
     padding: 40px 20px; overflow-y: auto;
+    /* 모바일 노치·홈바 안전영역 반영 */
+    padding-top: max(40px, env(safe-area-inset-top));
+    padding-bottom: max(40px, env(safe-area-inset-bottom));
+  }
+  @media (max-width: 640px) {
+    .modal-bg {
+      align-items: center;
+      padding: 12px;
+      padding-top: max(12px, env(safe-area-inset-top));
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
   }
   .modal-bg.show { display: flex; animation: fade .25s ease; }
   .modal {
@@ -1612,16 +1623,16 @@
 
 <!-- ====== UPLOAD MODAL ====== -->
 <div class="modal-bg" id="upload-modal" style="z-index: 110;">
-  <div class="modal" style="max-width: 520px;">
-    <div class="modal-head" style="padding-bottom: 16px;">
+  <div class="modal" style="max-width: 520px; max-height: 88dvh; max-height: 88vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="modal-head" style="padding-bottom: 12px; flex-shrink:0;">
       <div style="flex:1;">
-        <div class="eyebrow" style="margin-bottom: 8px;">파일 분석</div>
-        <h2 class="serif" style="font-size: 22px;">경력증명서를 분석하고 있습니다</h2>
-        <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">AI가 파일에서 기본정보와 프로젝트를 자동 추출합니다.</div>
+        <div class="eyebrow" style="margin-bottom: 6px;">파일 분석</div>
+        <h2 class="serif" style="font-size: 19px;">경력증명서를 분석하고 있습니다</h2>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">AI가 파일에서 기본정보와 프로젝트를 자동 추출합니다.</div>
       </div>
       <button class="modal-close" onclick="cancelUpload()" title="업로드 취소">✕</button>
     </div>
-    <div class="modal-body" style="padding: 20px 32px 24px;">
+    <div class="modal-body" style="padding: 12px 28px 16px; overflow-y:auto; flex:1;">
       <ul class="upload-steps" id="upload-steps">
         <li class="us-item" data-step="1"><span class="us-dot"></span><span>파일 읽기</span><span class="us-state">대기</span></li>
         <li class="us-item" data-step="2"><span class="us-dot"></span><span>내용 분석</span><span class="us-state">대기</span></li>
@@ -1630,13 +1641,13 @@
       </ul>
 
       <!-- 명언 슬라이드 -->
-      <div id="quote-slide" style="margin-top:20px;padding:18px 20px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:10px;border-left:3px solid var(--accent);min-height:90px;display:flex;flex-direction:column;justify-content:center;transition:opacity 0.6s ease;">
-        <div id="quote-text" style="font-size:18px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink);line-height:1.85;font-style:italic;font-weight:500;"></div>
-        <div id="quote-author" style="font-size:15px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink-2);margin-top:10px;text-align:right;font-weight:600;"></div>
+      <div id="quote-slide" style="margin-top:14px;padding:14px 16px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:10px;border-left:3px solid var(--accent);min-height:72px;display:flex;flex-direction:column;justify-content:center;transition:opacity 0.6s ease;">
+        <div id="quote-text" style="font-size:16px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink);line-height:1.7;font-style:italic;font-weight:500;"></div>
+        <div id="quote-author" style="font-size:14px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink-2);margin-top:8px;text-align:right;font-weight:600;"></div>
       </div>
-      <div style="display:flex;justify-content:center;gap:5px;margin-top:10px;" id="quote-dots"></div>
+      <div style="display:flex;justify-content:center;gap:5px;margin-top:8px;" id="quote-dots"></div>
 
-      <div style="text-align: center; margin-top: 14px;">
+      <div style="text-align: center; margin-top: 12px;">
         <button class="btn ghost small" onclick="cancelUpload()" style="font-size: 12px; color: var(--muted);">
           ✕ 업로드 취소
         </button>
@@ -1939,12 +1950,23 @@ async function _callAnthropicOnce(apiKey, body, signal) {
       }
       return 'text';
     })();
-    return await fetch(CONFIG.workerUrl, {
+    const fetchOpts = {
       method: 'POST',
+      mode: 'cors',
+      cache: 'no-store',
       headers: { 'Content-Type': 'application/json', 'X-Request-Type': reqType },
-      body: JSON.stringify(body),
-      signal
-    });
+      body: JSON.stringify(body)
+    };
+    // 모바일/인앱브라우저는 signal 전달 시 DataCloneError 발생 가능 → PC에서만 signal 사용
+    if (!_IS_MOBILE && signal && typeof signal === 'object' && 'aborted' in signal) {
+      fetchOpts.signal = signal;
+    }
+    try {
+      return await fetch(CONFIG.workerUrl, fetchOpts);
+    } catch (netErr) {
+      // 네트워크 실패(Load failed) → 명확한 메시지로 변환
+      throw new Error('서버 연결 실패 (Load failed). 인앱브라우저(카카오톡 등)에서는 외부 API 접속이 차단될 수 있습니다. Safari/Chrome 등 일반 브라우저로 열어주세요.');
+    }
   }
 
   // ── Server 모드 ──────────────────────────────────────────────
@@ -2072,17 +2094,12 @@ async function callGeminiDirect(apiKey, anthropicBody, signal) {
 /* ============================================================
    PDF.JS WORKER
    ============================================================ */
-// PDF.js 워커 설정 — 모바일에서는 DataCloneError 방지를 위해 워커 비활성화
+// 모바일 감지 (모바일은 PDF.js 워커 문제로 Vision OCR 직접 사용)
 const _IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+// PDF.js 워커 설정 (PC 전용 — 모바일은 extractPdfText를 호출하지 않음)
 if (typeof pdfjsLib !== 'undefined') {
   try {
-    if (_IS_MOBILE) {
-      // 모바일: 워커 끄고 메인 스레드에서 처리 (DataCloneError/fake worker 문제 회피)
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-      pdfjsLib.GlobalWorkerOptions.workerPort = null;
-    } else {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   } catch(e) {
     console.warn('PDF worker 설정 실패:', e);
   }
@@ -3760,11 +3777,16 @@ async function handleFile(event) {
       setUploadStepLabel(2, 'PDF 텍스트 추출');
       setUploadStep(2, 'active');
       let text = '';
-      try {
-        text = await extractPdfText(file);
-      } catch (err) {
-        console.warn('PDF 텍스트 추출 실패 → Vision OCR로 전환:', err.message);
-        text = '';
+      // 모바일은 PDF.js 워커 문제(DataCloneError)로 텍스트 추출을 건너뛰고 바로 Vision OCR 사용
+      if (!_IS_MOBILE) {
+        try {
+          text = await extractPdfText(file);
+        } catch (err) {
+          console.warn('PDF 텍스트 추출 실패 → Vision OCR로 전환:', err.message);
+          text = '';
+        }
+      } else {
+        console.log('[PDF] 모바일 감지 → Vision OCR 직접 사용 (PDF.js 우회)');
       }
       // 텍스트 충분성 검사: 페이지 수 대비 텍스트가 너무 적으면 스캔본으로 판단 → Vision OCR
       const pages = _lastPdfPageCount || 1;
@@ -3885,7 +3907,13 @@ async function handleFile(event) {
       if (openTextInput) openTextInputModal();
     } else {
       const detail = msg || '알 수 없는 오류가 발생했습니다.';
-      toast('⚠️ 파일 분석 실패\n\n' + detail + '\n\n💡 해결: "📝 텍스트 직접 입력" 버튼으로 경력 내용을 붙여넣어 진행하실 수 있습니다.', 15000);
+      const isNetwork = /load failed|failed to fetch|networkerror|cloned/i.test(detail);
+      if (isNetwork && _IS_MOBILE) {
+        // 카카오톡 등 인앱브라우저에서 외부 API 차단 가능성
+        toast('⚠️ 네트워크 연결 실패\n\n카카오톡·인스타그램 등 앱 안의 브라우저에서는 분석이 제한될 수 있습니다.\n\n💡 해결 방법:\n① 우측 상단 ··· → "다른 브라우저로 열기"(Safari/Chrome)\n② 또는 "📝 텍스트 직접 입력"으로 진행', 18000);
+      } else {
+        toast('⚠️ 파일 분석 실패\n\n' + detail + '\n\n💡 해결: "📝 텍스트 직접 입력" 버튼으로 경력 내용을 붙여넣어 진행하실 수 있습니다.', 15000);
+      }
     }
   }
 }
@@ -3896,26 +3924,7 @@ async function extractPdfText(file) {
   const arrayBuffer = await file.arrayBuffer();
   // 모바일 호환: Uint8Array로 전달 + 워커 비활성화 옵션으로 DataCloneError 방지
   const uint8 = new Uint8Array(arrayBuffer);
-  let pdf;
-  try {
-    pdf = await pdfjsLib.getDocument({
-      data: uint8,
-      disableWorker: _IS_MOBILE,   // 모바일은 워커 끄기
-      isEvalSupported: false,
-      useSystemFonts: true,
-      disableFontFace: _IS_MOBILE
-    }).promise;
-  } catch(err) {
-    // 폴백: 워커 완전히 끄고 재시도
-    console.warn('PDF 1차 실패, 워커 끄고 재시도:', err.message);
-    pdf = await pdfjsLib.getDocument({
-      data: new Uint8Array(arrayBuffer),
-      disableWorker: true,
-      isEvalSupported: false,
-      useSystemFonts: true,
-      disableFontFace: true
-    }).promise;
-  }
+  const pdf = await pdfjsLib.getDocument({ data: uint8 }).promise;
   _lastPdfPageCount = pdf.numPages;
   let text = '';
   for (let i = 1; i <= pdf.numPages; i++) {
