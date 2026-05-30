@@ -4211,7 +4211,7 @@ async function _extractInfoFromTextChunked(apiKey, fullText, signal, cacheKey) {
       try {
         const res = await callAnthropic(apiKey, {
           model: "claude-sonnet-4-20250514",
-          max_tokens: 16000,
+          max_tokens: 8000,
           messages: [{ role: "user", content: prompt + "\n\n[\uacbd\ub825\uc99d\uba85\uc11c \ud14d\uc2a4\ud2b8 (" + (i+j+1) + "/" + totalChunks + ")]\n" + chunk }]
         }, 0, signal);
         return await parseExtractionResponse(res);
@@ -4250,18 +4250,23 @@ async function _extractInfoFromTextChunked(apiKey, fullText, signal, cacheKey) {
 
 async function extractInfoFromText(apiKey, rawText, signal) {
   const text = rawText; // 한도 없음 - 청크 분할로 처리
+  const _t0 = performance.now();
+  const _logTime = (label) => console.log(`[추출시간] ${label}: ${((performance.now() - _t0) / 1000).toFixed(1)}초 (텍스트 ${text.length}자)`);
 
   // OCR 캐싱: 같은 텍스트 재추출 방지
   const cacheKey = 'ocr-text:' + hashString(text);
   if (_ocrCache.has(cacheKey)) {
     trackCacheHit();
+    _logTime('캐시 적중 (호출 0회)');
     return _ocrCache.get(cacheKey);
   }
 
   // 텍스트가 길면 청크로 나눠 병렬 호출 후 합치기 (잘림 방지)
-  const CHUNK_LIMIT = 20000; // 이 이상이면 청크 분할
+  const CHUNK_LIMIT = 28000; // 이 이상이면 청크 분할 (출력토큰 8000 기준 안전 범위)
   if (text.length > CHUNK_LIMIT) {
-    return await _extractInfoFromTextChunked(apiKey, text, signal, cacheKey);
+    const r = await _extractInfoFromTextChunked(apiKey, text, signal, cacheKey);
+    _logTime('청크 분할 추출 완료');
+    return r;
   }
 
   // 로컬 파싱 (AI 실패 시 fallback용으로만 사용)
@@ -4286,9 +4291,8 @@ async function extractInfoFromText(apiKey, rawText, signal) {
 - 현재 근무 중이면 endDate="근무중"으로 입력하세요.
 - specialty(전문분야)는 경력증명서 원문에 전문분야 항목이 명시된 경우에만 입력하세요. 원문에 없으면 반드시 빈 문자열("")로 두세요. 담당업무·공사종류·직무분야로 추측해서 채우지 마세요.
 - field(직무분야)도 원문에 직무분야 항목이 명시된 경우에만 입력하세요. 없으면 빈 문자열("")로 두세요.
-- grade 필드에는 모든 분야 그룹의 직무분야·전문분야 등급을 그룹명과 함께 읽기 쉽게 나열하세요. (예: "[설계·시공 등] 토목 특급, 안전관리 초급 / 토목시공 중급, 측량및지형공간정보 고급  [건설사업관리] 토목 특급, 안전관리 초급 / 토목시공 초급, 측량및지형공간정보 고급")
-- [중요] 기술등급표는 여러 '분야 그룹'(예: "설계·시공 등", "건설사업관리", "품질관리")으로 나뉘고, 각 그룹마다 직무분야·전문분야별 등급이 다르게 기재될 수 있습니다. 표에 존재하는 모든 그룹을 빠짐없이 추출하세요. 반드시 그룹(세로 열)별로 정확히 구분해서 읽고, 한 그룹의 등급을 다른 그룹과 섞지 마세요. 같은 분야명(예: "토목시공")이라도 그룹에 따라 등급이 다를 수 있습니다(예: 설계·시공=중급, 건설사업관리=초급). 각 그룹의 열을 정확히 따라가세요.
-- 기술등급표 전체를 아래 "등급표" 배열로 그룹별 구조화하여 추출하세요. 표에 있는 그룹 수만큼 배열 원소를 만들고, 각 그룹의 직무분야/전문분야는 [분야명, 등급] 쌍으로 담습니다. 품질관리처럼 직무/전문분야 구분 없이 등급만 있는 경우 직무분야에 [분야명: "품질관리", 등급] 형태로 넣으세요.
+- grade(등급) 필드: 등급표가 여러 분야 그룹(예: 설계·시공 등 / 건설사업관리 / 품질관리)으로 나뉘면, 각 그룹의 직무분야·전문분야 등급을 그룹명과 함께 빠짐없이 나열하세요. 같은 분야명이라도 그룹별 등급이 다를 수 있으니(설계·시공=중급, 건설사업관리=초급 식) 그룹 열을 정확히 따라 읽고 섞지 마세요.
+- 등급표 구조화: 표에 있는 그룹 수만큼 "등급표" 배열 원소를 만들고, 각 그룹의 직무분야/전문분야를 [분야명, 등급] 쌍으로 담으세요. 품질관리처럼 직무/전문 구분이 없으면 직무분야에 {분야명:"품질관리", 등급} 한 개만 넣으세요. (등급표는 보통 문서 첫 장에만 있습니다)
 - 성명에 한자가 병기된 경우(예: 홍길동(洪吉童)) 한글 이름만 추출하세요.
 
 [출력 형식]
@@ -4298,17 +4302,12 @@ async function extractInfoFromText(apiKey, rawText, signal) {
     "생년월일": "",
     "분야": "",
     "전문분야": "",
-    "등급": "[설계·시공 등] 토목 특급, 안전관리 초급 / 토목시공 중급, 측량및지형공간정보 고급  [건설사업관리] 토목 특급, 안전관리 초급 / 토목시공 초급, 측량및지형공간정보 고급",
+    "등급": "그룹별 직무·전문분야 등급 전체 나열",
     "등급표": [
       {
-        "분야": "설계·시공 등",
-        "직무분야": [ { "분야명": "토목", "등급": "특급" }, { "분야명": "안전관리", "등급": "초급" } ],
-        "전문분야": [ { "분야명": "토목시공", "등급": "중급" }, { "분야명": "측량및지형공간정보", "등급": "고급" } ]
-      },
-      {
-        "분야": "건설사업관리",
-        "직무분야": [ { "분야명": "토목", "등급": "특급" }, { "분야명": "안전관리", "등급": "초급" } ],
-        "전문분야": [ { "분야명": "토목시공", "등급": "초급" }, { "분야명": "측량및지형공간정보", "등급": "고급" } ]
+        "분야": "분야 그룹명 (설계·시공 등 / 건설사업관리 / 품질관리 등, 표에 있는 그룹마다 원소 추가)",
+        "직무분야": [ { "분야명": "토목", "등급": "특급" } ],
+        "전문분야": [ { "분야명": "토목시공", "등급": "중급" } ]
       }
     ],
     "기술자번호": "",
@@ -4343,7 +4342,7 @@ ${text}`;
   try {
     res = await callAnthropic(apiKey, {
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 16000,
+      max_tokens: 8000,
       temperature: 0,
       messages: [{ role: 'user', content: prompt }]
     }, 0, signal);
@@ -4430,7 +4429,7 @@ ${text}`;
 
       const vRes = await callAnthropic(apiKey, {
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 16000,
+        max_tokens: 6000,
       temperature: 0,
         messages: [{ role: 'user', content: verifyPrompt }]
       }, 0, signal);
@@ -4459,6 +4458,7 @@ ${text}`;
   }
 
   _ocrCache.set(cacheKey, parsed);
+  _logTime('단일 추출 완료');
   return parsed;
 }
 
@@ -4876,6 +4876,13 @@ function getExtractionInstructions() {
     "분야": "",
     "전문분야": "",
     "등급": "등급란 원문 그대로. 여러 분야 등급이 있으면 모두 포함 (예: '토목 특급 / 토목시공 중급 / 안전관리 초급')",
+    "등급표": [
+      {
+        "분야": "분야 그룹명 (설계·시공 등 / 건설사업관리 / 품질관리 등, 표에 있는 그룹마다 원소 추가. 등급표는 보통 첫 장에만 있음)",
+        "직무분야": [ { "분야명": "토목", "등급": "특급" } ],
+        "전문분야": [ { "분야명": "토목시공", "등급": "중급" } ]
+      }
+    ],
     "기술자번호": "",
     "국가기술자격등록번호": "",
     "주소": "",
