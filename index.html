@@ -6434,13 +6434,14 @@ function renderForm4(applied, agg) {
       <div style="text-align:center;font-size:17pt;font-weight:800;letter-spacing:6px;margin:14px 0 16px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;">신고자료 경정신청서</div>
       <div style="font-size:8pt;margin-bottom:3px;">※ 어두운 칸은 신청인이 적지 않습니다.</div>
 
-      <table style="width:100%;border-collapse:collapse;border-left:none;border-right:none;">
-        <!-- 접수 행 (협회 작성란 - 회색, 8칸 그리드 2:2:2:2) -->
+      <table style="width:100%;border-collapse:collapse;border-left:none;border-right:none;table-layout:fixed;">
+        <!-- 접수 행 (협회 작성란 - 회색, 4칸 균등) -->
+        <colgroup><col style="width:25%;"><col style="width:25%;"><col style="width:25%;"><col style="width:25%;"></colgroup>
         <tr>
-          <td colspan="2" style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:7pt;font-weight:600;height:40px;border-left:none;">접수번호</td>
-          <td colspan="2" style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:7pt;font-weight:600;height:40px;border-left:1px solid #000;">접수일</td>
-          <td colspan="2" style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:7pt;font-weight:600;height:40px;border-left:1px solid #000;">실명확인</td>
-          <td colspan="2" style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:7pt;font-weight:600;height:40px;border-left:1px solid #000;border-right:none;">처리기간 <span style="font-weight:400;">10일</span></td>
+          <td style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:8pt;font-weight:600;height:40px;border-left:none;">접수번호</td>
+          <td style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:8pt;font-weight:600;height:40px;border-left:1px solid #000;">접수일</td>
+          <td style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:8pt;font-weight:600;height:40px;border-left:1px solid #000;">실명확인</td>
+          <td style="background:#ececec;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 5px;vertical-align:top;text-align:left;font-size:8pt;font-weight:600;height:40px;border-left:1px solid #000;border-right:none;">처리기간 <span style="font-weight:400;">10일</span></td>
         </tr>
         <!-- 성명/생년월일 (접수행과 이중선 구분) -->
         <tr>
@@ -6507,7 +6508,7 @@ function renderForm4(applied, agg) {
         <span style="font-size:7.5pt;color:#888;">(서명 또는 인)</span>
       </div>
       <div style="font-size:10pt;font-weight:700;margin:10px 0 8px;">
-        <span class="editable-field" contenteditable="true" data-form4="assoc-name" style="font-size:10pt;font-weight:700;min-width:90px;">○○○○○</span> 협회장 귀하
+        <span class="editable-field" contenteditable="true" data-form4="assoc-name" style="font-size:10pt;font-weight:700;min-width:180px;"></span> 협회장 귀하
       </div>
 
       <!-- 첨부서류/수수료 -->
@@ -6539,10 +6540,10 @@ function renderForm4(applied, agg) {
           <col>
         </colgroup>
         <tr>
-          <th style="${LH}font-size:6.5pt;padding:3px 4px;white-space:nowrap;vertical-align:top;text-align:left;border-left:none;">대리신청인</th>
-          <td style="border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 6px;vertical-align:top;font-size:9pt;border-left:1px solid #000;"><span style="font-size:6.5pt;font-weight:600;display:block;">성명</span><span class="editable-field" contenteditable="true" data-form4="agent-name" style="font-size:9pt;min-width:60px;"></span> <span style="font-size:6.5pt;color:#999;float:right;">(서명 또는 인)</span></td>
-          <td style="border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 6px;vertical-align:top;font-size:9pt;border-left:1px solid #000;"><span style="font-size:6.5pt;font-weight:600;display:block;">생년월일</span><span class="editable-field" contenteditable="true" data-form4="agent-birth" style="font-size:9pt;min-width:80px;"></span></td>
-          <td style="border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 6px;vertical-align:top;font-size:9pt;border-left:1px solid #000;border-right:none;"><span style="font-size:6.5pt;font-weight:600;display:block;">연락처</span><span class="editable-field" contenteditable="true" data-form4="agent-tel" style="font-size:9pt;min-width:90px;"></span></td>
+          <th style="${LH}font-size:8.5pt;padding:3px 4px;white-space:nowrap;vertical-align:middle;text-align:center;border-left:none;">대리신청인</th>
+          <td style="border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 6px;vertical-align:top;font-size:9pt;border-left:1px solid #000;"><span style="font-size:7.5pt;font-weight:600;display:block;">성명</span><span class="editable-field" contenteditable="true" data-form4="agent-name" style="font-size:9pt;min-width:60px;"></span> <span style="font-size:7.5pt;color:#999;float:right;">(서명 또는 인)</span></td>
+          <td style="border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 6px;vertical-align:top;font-size:9pt;border-left:1px solid #000;"><span style="font-size:7.5pt;font-weight:600;display:block;">생년월일</span><span class="editable-field" contenteditable="true" data-form4="agent-birth" style="font-size:9pt;min-width:80px;"></span></td>
+          <td style="border-top:1px solid #000;border-bottom:1px solid #000;padding:3px 6px;vertical-align:top;font-size:9pt;border-left:1px solid #000;border-right:none;"><span style="font-size:7.5pt;font-weight:600;display:block;">연락처</span><span class="editable-field" contenteditable="true" data-form4="agent-tel" style="font-size:9pt;min-width:90px;"></span></td>
         </tr>
       </table>
       <div style="text-align:right;font-size:7.5pt;color:#555;margin-top:3px;">210㎜×297㎜[일반용지 60g/㎡(재활용품)]</div>
