@@ -2142,6 +2142,18 @@ if (typeof pdfjsLib !== 'undefined') {
    ============================================================ */
 let projects = [];
 let results = [];
+// 진단 규칙 버전 — 규칙(ruleBasedDiagnosis 등)을 변경할 때마다 +1
+// 저장된 분석 결과가 이 버전과 다르면 "분석 기준 업데이트" 안내 후 재분석 유도
+// (사용자에게 번호는 노출하지 않음, 내부 관리용)
+const RULE_VERSION = 1;
+
+// 저장 데이터의 규칙 버전이 현재와 다르면 결과를 신뢰하지 않고 재분석 유도
+// 반환: true = 결과 복원 OK / false = 결과 버리고 입력만 (재분석 필요)
+function _resultsStillValid(data) {
+  if (!data || !data.results || !data.results.length) return false;
+  const savedVer = data.ruleVersion || 0;
+  return savedVer === RULE_VERSION;
+}
 let currentFilter = 'all';
 let personalInfo = {
   name: '', birthDate: '', field: '', specialty: '',
@@ -5434,6 +5446,8 @@ async function runAnalysis(skipAI) {
   renderResults();
   goView('view-results');
   setStep(3);
+  // 분석 결과 자동 저장 (새로고침해도 결과 유지)
+  try { _doAutoSave(); } catch(e) {}
 }
 
 function sanitize(r, p, pre) {
@@ -5977,6 +5991,8 @@ function _doAutoSave() {
   const data = {
     personalInfo: personalInfo,
     projects: projects,
+    results: (typeof results !== 'undefined' && results && results.length) ? results : null,
+    ruleVersion: RULE_VERSION,
     savedAt: new Date().toLocaleString('ko-KR'),
     savedAtTime: Date.now()
   };
@@ -6010,7 +6026,17 @@ function restoreAutoSave() {
     if (projects.length === 0) addEmptyRow(false);
     renderEditor();
     renderPersonalInfo();
-    toast('📂 임시저장 데이터를 복원했습니다. (' + projectCount + '건)');
+    if (_resultsStillValid(data)) {
+      results = data.results;
+      renderResults();
+      goView('view-results');
+      setStep(3);
+      toast('📂 분석 결과까지 복원했습니다. (' + projectCount + '건)');
+    } else if (data.results && data.results.length) {
+      toast('📂 입력 데이터를 복원했습니다. (' + projectCount + '건)\n\n⚠️ 분석 기준이 업데이트되어 재분석이 필요합니다.', 9000);
+    } else {
+      toast('📂 임시저장 데이터를 복원했습니다. (' + projectCount + '건)');
+    }
     return true;
   } catch(e) { return false; }
 }
@@ -6019,6 +6045,8 @@ function saveToStorage() {
   const data = {
     personalInfo: personalInfo,
     projects: projects,
+    results: (typeof results !== 'undefined' && results && results.length) ? results : null,
+    ruleVersion: RULE_VERSION,
     savedAt: new Date().toLocaleString('ko-KR')
   };
   try {
@@ -6043,7 +6071,19 @@ function loadFromStorage() {
     if (projects.length === 0) addEmptyRow(false);
     renderEditor();
     renderPersonalInfo();
-    toast('📂 데이터를 불러왔습니다. (' + projectCount + '건)');
+    // 분석 결과 복원 (단, 규칙 버전이 같을 때만)
+    if (_resultsStillValid(data)) {
+      results = data.results;
+      renderResults();
+      goView('view-results');
+      setStep(3);
+      toast('📂 분석 결과까지 불러왔습니다. (' + projectCount + '건)');
+    } else if (data.results && data.results.length) {
+      // 결과는 있으나 규칙이 업데이트됨 → 입력만 복원, 재분석 안내
+      toast('📂 입력 데이터를 불러왔습니다. (' + projectCount + '건)\n\n⚠️ 분석 기준이 업데이트되어 이전 분석 결과는 사용하지 않습니다. AI 분석을 다시 실행해 주세요.', 9000);
+    } else {
+      toast('📂 입력 데이터를 불러왔습니다. (' + projectCount + '건) — AI 분석을 다시 실행하세요.');
+    }
     updateStorageStatus();
   } catch(e) {
     toast('⚠️ 불러오기 실패: 저장된 데이터가 손상되었습니다.');
@@ -6108,7 +6148,18 @@ setTimeout(() => {
         const t = new Date(data.savedAtTime || Date.now()).toLocaleTimeString('ko-KR');
         const ind = document.getElementById('autosave-indicator');
         if (ind) { ind.textContent = '✓ 임시저장 복원됨 ' + t; ind.style.color = 'var(--ok)'; }
-        toast('📂 임시저장 데이터를 복원했습니다. (' + projectCount + '건)');
+        // 분석 결과까지 있으면 복원 (규칙 버전 같을 때만)
+        if (_resultsStillValid(data)) {
+          results = data.results;
+          renderResults();
+          goView('view-results');
+          setStep(3);
+          toast('📂 분석 결과까지 복원했습니다. (' + projectCount + '건)');
+        } else if (data.results && data.results.length) {
+          toast('📂 입력 데이터를 복원했습니다. (' + projectCount + '건)\n\n⚠️ 분석 기준이 업데이트되어 재분석이 필요합니다.', 9000);
+        } else {
+          toast('📂 임시저장 데이터를 복원했습니다. (' + projectCount + '건)');
+        }
       }
     }
   } catch(e) {}
