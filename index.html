@@ -118,6 +118,91 @@
   .step.done .n { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .step-sep { width: 24px; height: 1px; background: var(--line-2); }
 
+  /* ====== MAIN NAV MENU ====== */
+  .nav-left { display: flex; align-items: center; gap: 30px; }
+  .nav-right { display: flex; align-items: center; gap: 18px; }
+  .main-nav { display: flex; align-items: center; gap: 2px; }
+  .nav-item { position: relative; }
+  .nav-link {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 14px; font-size: 14px; font-weight: 600;
+    color: var(--ink-2); background: transparent; border: none;
+    border-radius: 8px; cursor: pointer; letter-spacing: -0.01em;
+    transition: background .15s ease, color .15s ease;
+    font-family: inherit;
+  }
+  .nav-link:hover { background: var(--bg-2); color: var(--ink); }
+  .nav-item.active .nav-link { color: var(--accent); }
+  .nav-item.active .nav-link::after {
+    content: ''; position: absolute; left: 14px; right: 14px; bottom: -11px;
+    height: 2px; background: var(--accent); border-radius: 2px;
+  }
+  .nav-caret { font-size: 8px; opacity: .55; transition: transform .15s ease; }
+  .nav-item:hover .nav-caret { transform: rotate(180deg); }
+  .nav-dropdown {
+    position: absolute; top: calc(100% + 6px); left: 0;
+    min-width: 210px; background: var(--paper);
+    border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow-lg); padding: 6px;
+    opacity: 0; visibility: hidden; transform: translateY(-6px);
+    transition: opacity .15s ease, transform .15s ease, visibility .15s ease; z-index: 60;
+  }
+  .nav-item:hover .nav-dropdown { opacity: 1; visibility: visible; transform: translateY(0); }
+  .nav-dropdown::before { content: ''; position: absolute; top: -6px; left: 0; right: 0; height: 6px; }
+  .nav-dropdown a {
+    display: block; padding: 10px 14px; font-size: 13.5px; font-weight: 500;
+    color: var(--ink-2); text-decoration: none; border-radius: 8px;
+    cursor: pointer; transition: background .12s ease, color .12s ease; white-space: nowrap;
+  }
+  .nav-dropdown a:hover { background: var(--accent-bg); color: var(--accent); }
+  .nav-badge {
+    font-size: 9px; font-weight: 700; letter-spacing: .04em;
+    background: var(--bg-2); color: var(--muted); padding: 2px 6px;
+    border-radius: 5px; margin-left: 6px; vertical-align: middle;
+  }
+
+  /* hamburger + mobile drawer */
+  .nav-hamburger {
+    display: none; background: transparent; border: 1px solid var(--line);
+    border-radius: 9px; padding: 7px 11px; font-size: 17px; line-height: 1; color: var(--ink);
+  }
+  .nav-hamburger:hover { background: var(--bg-2); }
+  .mobile-nav { display: none; }
+  .mobile-nav-overlay { display: none; }
+  .mnav-group { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  .mnav-group:last-child { border-bottom: none; }
+  .mnav-title { font-size: 13px; font-weight: 700; color: var(--ink); padding: 12px 10px 6px; letter-spacing: -0.01em; }
+  .mnav-sub { display: block; padding: 10px 18px; font-size: 13.5px; color: var(--ink-2); text-decoration: none; cursor: pointer; border-radius: 8px; }
+  .mnav-sub:hover { background: var(--accent-bg); color: var(--accent); }
+
+  @media (max-width: 880px) {
+    .main-nav { display: none; }
+    .nav-hamburger { display: inline-flex; }
+    .nav-left { gap: 0; }
+    .mobile-nav {
+      display: block; position: fixed; top: 0; right: 0; bottom: 0;
+      width: 280px; max-width: 84vw; background: var(--paper);
+      border-left: 1px solid var(--line); box-shadow: -12px 0 40px -16px rgba(0,0,0,.22);
+      transform: translateX(100%); transition: transform .25s ease; z-index: 200;
+      padding: 18px 14px; overflow-y: auto;
+      padding-top: max(18px, env(safe-area-inset-top));
+    }
+    .mobile-nav.open { transform: translateX(0); }
+    .mobile-nav-overlay {
+      position: fixed; inset: 0; background: rgba(9,9,11,.42); z-index: 150;
+      opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility .25s ease;
+    }
+    .mobile-nav-overlay.open { display: block; opacity: 1; visibility: visible; }
+  }
+  .mnav-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px 14px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  .mnav-head b { font-size: 14px; }
+  .mnav-close { background: transparent; border: none; font-size: 20px; color: var(--muted); cursor: pointer; line-height: 1; }
+
+  /* hero trust bar */
+  .hero-trust { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 22px; }
+  .hero-trust span { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+
   /* ====== LAYOUT ====== */
   .container { max-width: 1240px; margin: 0 auto; padding: 48px 28px 96px; }
   .view { display: none; }
@@ -125,7 +210,8 @@
   @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
   /* ====== INTRO ====== */
-  .hero { display: grid; grid-template-columns: 1.3fr 1fr; gap: 64px; align-items: start; margin-bottom: 56px; }
+  .hero { display: block; margin-bottom: 56px; }
+  .hero-main { max-width: 760px; }
   .eyebrow {
     font-size: 11px; letter-spacing: 0.22em; color: var(--accent);
     text-transform: uppercase; margin-bottom: 18px;
@@ -498,7 +584,6 @@
 
   /* ====== RESPONSIVE ====== */
   @media (max-width: 980px) {
-    .hero { grid-template-columns: 1fr; gap: 32px; }
     h1.title { font-size: 42px; }
     .features { grid-template-columns: 1fr 1fr; }
     .feature:nth-child(2) { border-right: none; }
@@ -1240,79 +1325,69 @@
 <!-- ====== TOP BAR ====== -->
 <header class="topbar">
   <div class="topbar-inner">
-    <div class="brand" onclick="goView('view-input')" style="cursor:pointer;" title="홈으로 이동">
-      <div class="brand-mark">J&amp;R</div>
-      <div class="brand-text">
-        <div class="ko">잡매칭&amp;렌트</div>
-        <div class="sub">건설기술인 경력경정 자동화 플랫폼</div>
+    <div class="nav-left">
+      <div class="brand" onclick="goView('view-input')" style="cursor:pointer;" title="홈으로 이동">
+        <div class="brand-mark">J&amp;R</div>
+        <div class="brand-text">
+          <div class="ko">잡매칭&amp;렌트</div>
+          <div class="sub">건설기술인 경력경정 특화 AI</div>
+        </div>
       </div>
+      <nav class="main-nav" id="main-nav"></nav>
     </div>
-    <nav class="steps" id="steps">
-      <div class="step active" data-step="1"><span class="n">1</span><span>경력 데이터</span></div>
-      <div class="step-sep"></div>
-      <div class="step" data-step="2"><span class="n">2</span><span>AI 분석</span></div>
-      <div class="step-sep"></div>
-      <div class="step" data-step="3"><span class="n">3</span><span>진단 결과</span></div>
-      <div class="step-sep"></div>
-      <div class="step" data-step="4"><span class="n">4</span><span>보고서</span></div>
-    </nav>
+    <div class="nav-right">
+      <nav class="steps" id="steps">
+        <div class="step active" data-step="1"><span class="n">1</span><span>경력 데이터</span></div>
+        <div class="step-sep"></div>
+        <div class="step" data-step="2"><span class="n">2</span><span>AI 분석</span></div>
+        <div class="step-sep"></div>
+        <div class="step" data-step="3"><span class="n">3</span><span>진단 결과</span></div>
+        <div class="step-sep"></div>
+        <div class="step" data-step="4"><span class="n">4</span><span>보고서</span></div>
+      </nav>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="메뉴 열기">☰</button>
+    </div>
   </div>
 </header>
+<div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+<aside class="mobile-nav" id="mobile-nav">
+  <div class="mnav-head">
+    <b>메뉴</b>
+    <button class="mnav-close" onclick="closeMobileNav()" aria-label="메뉴 닫기">✕</button>
+  </div>
+  <div id="mobile-nav-body"></div>
+</aside>
 
 <main class="container">
 
   <!-- ====== VIEW 1: INTRO + DATA INPUT ====== -->
   <section class="view active" id="view-input">
     <div class="hero">
-      <div>
-        <div class="eyebrow">국내 최초 수준 · 건설기술 경력관리 특화 AI</div>
-        <h1 class="serif title">경력증명서의 <em>오류와 누락</em>을<br>Rule Engine이 먼저 발견합니다.</h1>
+      <div class="hero-main">
+        <div class="eyebrow">국내 최초 · 건설기술인 경력경정 특화 AI 플랫폼</div>
+        <h1 class="serif title">AI가 경력증명서를 분석해<br><em>경정처리 가능성</em>을 진단합니다.</h1>
         <p class="lede">
-          본 시스템은 단순 문서 OCR 솔루션이 아닌, <strong>건설기술인협회 경정처리 기준과 실제 사례집을 Rule Engine화</strong>하여
-          건설기술인의 경력 데이터를 자동 분석하고, 경정 가능 여부를 판단하며,
-          제출서류와 신고서식을 자동 생성하는 <strong>국내 최초 수준의 건설기술 경력관리 특화 AI 플랫폼</strong>입니다.
+          단순 문서 OCR이 아닙니다. <strong>건설기술인협회 경정처리 기준과 실제 사례집을 Rule Engine화</strong>하여
+          경력 데이터의 오류·누락을 자동으로 검출하고, 실제 경정 가능 여부를 사전에 판단하며,
+          제출서류와 신고서식까지 자동 생성합니다.
         </p>
         <div class="cta-row">
           <button class="btn" onclick="triggerFileUpload()">경력증명서 업로드 <span class="btn-arrow">→</span></button>
           <button class="btn ghost" onclick="openTextInputModal()">📝 텍스트 직접 입력</button>
-          <button class="btn ghost" onclick="loadSample()">샘플로 시작</button>
+          <button class="btn ghost" onclick="loadSample()">샘플로 체험하기</button>
           <button class="btn ghost" onclick="addEmptyRow()">직접 입력</button>
+          <button class="btn ghost" onclick="goView('view-rules')">진단가이드 보기 →</button>
           <input type="file" id="file-input" accept=".pdf,.xlsx,.xls,.csv,.txt,.png,.jpg,.jpeg,.webp,.gif,application/pdf,image/*" style="display:none" onchange="handleFile(event)">
         </div>
-        <div style="font-size: 12px; color: var(--muted); margin-top: 14px; line-height: 1.6;">
+        <div class="hero-trust">
+          <span>✓ AI 호출 0회로 즉시 동작하는 12가지 검출 규칙</span>
+          <span>✓ 사례집(2024.12.27) 기준 Rule Engine 검증</span>
+          <span>✓ 경정신고 서식 자동 생성</span>
+        </div>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.6;">
           지원 형식: PDF · 스캔 PDF · 이미지 · XLSX · CSV
         </div>
       </div>
-
-      <aside class="hero-side">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
-          <h3 class="serif" style="margin:0;">진단 규칙</h3>
-          <button class="btn ghost small" onclick="goView('view-rules')" style="font-size:11px; padding:6px 10px;">
-            📖 규칙 가이드 →
-          </button>
-        </div>
-        <div style="font-size: 11.5px; color: var(--muted); line-height: 1.7;">
-          사례집(2024.12.27)을 Rule Engine화한 12가지 검출 규칙이
-          AI 호출 없이도 즉시 동작합니다.
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 14px; font-size: 11.5px;">
-          <span>① 참여기간 일자 누락</span>
-          <span>② 발주자 공란</span>
-          <span>③ 공사종류 공란</span>
-          <span>④ 담당업무 직책화</span>
-          <span>⑤ 비발주자 감독 기재</span>
-          <span>⑥ 참여기간 중복</span>
-          <span>⑦ 퇴사일 이후 참여기간</span>
-          <span>⑧ 착공일 이전 참여기간</span>
-          <span>⑨ 준공일 이후 참여기간</span>
-          <span>⑩ 동일사업명 분리 신고</span>
-          <span>⑪ 직무/전문분야 공란</span>
-          <span>⑫ 발급일 기준 마감신고</span>
-        </div>
-        <button class="btn small" onclick="goView('view-rules')" style="width:100%; margin-top:16px;">
-          전체 규칙 자세히 보기
-        </button>
-      </aside>
     </div>
 
     <div class="features">
@@ -1474,17 +1549,22 @@
     </div>
   </section>
 
-  <!-- ====== VIEW: RULES GUIDE (12가지 규칙 + 사용자 정의 통합) ====== -->
+  <!-- ====== VIEW: RULES GUIDE (진단 규칙 가이드) ====== -->
   <section class="view" id="view-rules">
-    <div class="section-head" style="margin-bottom: 20px;">
+    <div class="section-head" style="margin-bottom: 16px;">
       <div>
-        <div class="eyebrow">진단 규칙</div>
-        <h2 class="serif">12가지 핵심 규칙 + 사용자 정의 규칙</h2>
-        <div class="sub">사례집(2024.12.27)을 Rule Engine화한 12가지 검출 규칙입니다. AI 호출 없이도 즉시 동작하며, 사용자 정의 규칙을 추가하면 AI 분석 시에도 함께 반영됩니다.</div>
+        <div class="eyebrow">진단 가이드</div>
+        <h2 class="serif">진단 규칙 가이드</h2>
+        <div class="sub">건설기술인협회 경정처리 기준과 실제 사례를 기반으로 경력증명서의 오류·누락을 자동 진단합니다.</div>
       </div>
       <div>
         <button class="btn ghost small" onclick="goView('view-input')">← 홈으로</button>
       </div>
+    </div>
+
+    <div class="help" style="margin-bottom: 24px;">
+      본 시스템은 건설기술인협회 경정처리 기준과 실제 사례를 기반으로 경력증명서의 오류 및 누락사항을 자동 진단합니다.
+      단순 OCR 솔루션이 아닌 <strong>Rule Engine 기반의 규칙 검증 시스템</strong>으로, 실제 경정처리 가능 여부를 사전에 분석하여 사용자에게 가이드를 제공합니다.
     </div>
 
     <!-- 12개 규칙 상세 카드 -->
@@ -5923,6 +6003,10 @@ function goView(id, fromPopstate) {
   // 진입 시 자동 렌더링
   if (id === 'view-rules') renderRulesPanel();
 
+  // 네비게이션 상태 갱신 + 모바일 메뉴 닫기
+  updateNavActive(id);
+  closeMobileNav();
+
   // 브라우저 history에 화면 상태 기록 (뒤로가기로 사이트 이탈 방지)
   if (!fromPopstate) {
     try { history.pushState({ view: id }, '', '#' + id); } catch(e) {}
@@ -5936,10 +6020,100 @@ window.addEventListener('popstate', function(e) {
   goView(id, true);
 });
 
-// 최초 진입 시 history 초기 상태 등록
+// 최초 진입 시 history 초기 상태 등록 + 네비게이션 렌더
 window.addEventListener('DOMContentLoaded', function() {
   try { history.replaceState({ view: 'view-input' }, '', '#view-input'); } catch(e) {}
+  renderNav();
+  updateNavActive('view-input');
 });
+
+/* ============================================================
+   상단 네비게이션 (확장형 구조)
+   - 메뉴 추가: NAV_CONFIG 배열에 항목 1개만 추가하면 데스크톱/모바일 모두 자동 반영
+   - view: 대메뉴 클릭 시 이동할 화면 id (없으면 클릭 비활성)
+   - views: 해당 메뉴가 'active'로 표시될 화면 id 목록
+   - children: 소메뉴 [{ label, onclick }]
+   - badge: 라벨 옆 작은 표식 (예: '예정')
+   ============================================================ */
+const NAV_CONFIG = [
+  {
+    id: 'analysis', label: '경력분석', view: 'view-input',
+    views: ['view-input', 'view-analyzing', 'view-results', 'view-report'],
+    children: [
+      { label: '경력증명서 업로드', onclick: "goView('view-input'); triggerFileUpload()" },
+      { label: '텍스트 직접 입력', onclick: "goView('view-input'); openTextInputModal()" },
+      { label: '샘플로 체험하기', onclick: "goView('view-input'); loadSample()" },
+      { label: '직접 입력', onclick: "goView('view-input'); addEmptyRow()" }
+    ]
+  },
+  {
+    id: 'guide', label: '진단 가이드', view: 'view-rules',
+    views: ['view-rules'],
+    children: [
+      { label: '규칙 가이드', onclick: "goView('view-rules')" }
+    ]
+  }
+  // ── 향후 확장 메뉴 (필요 시 주석 해제) ──────────────────────
+  // , { id: 'report', label: '경정신고', view: 'view-forms', views: ['view-forms'], badge: '예정',
+  //     children: [ { label: '신고서식 작성', onclick: "goView('view-forms')" } ] }
+  // , { id: 'rehire', label: '재취업 서비스', badge: '예정',
+  //     children: [ { label: '준비중', onclick: "toast('준비 중인 서비스입니다.')" } ] }
+  // , { id: 'mypage', label: '마이페이지', badge: '예정',
+  //     children: [ { label: '준비중', onclick: "toast('준비 중인 서비스입니다.')" } ] }
+  // , { id: 'admin', label: '관리자', badge: '예정',
+  //     children: [ { label: '준비중', onclick: "toast('준비 중인 서비스입니다.')" } ] }
+];
+
+function _navEsc(s) { return String(s).replace(/"/g, '&quot;'); }
+
+function renderNav() {
+  const desktop = document.getElementById('main-nav');
+  const mobile = document.getElementById('mobile-nav-body');
+  if (!desktop || !mobile) return;
+  let d = '', m = '';
+  NAV_CONFIG.forEach(item => {
+    const hasChildren = item.children && item.children.length;
+    const caret = hasChildren ? '<span class="nav-caret">▼</span>' : '';
+    const badgeHtml = item.badge ? '<span class="nav-badge">' + item.badge + '</span>' : '';
+    const topClick = item.view ? 'onclick="navGo(\'' + item.view + '\')"' : '';
+    let dd = '';
+    if (hasChildren) {
+      dd = '<div class="nav-dropdown">' + item.children.map(c =>
+        '<a onclick="' + _navEsc(c.onclick) + '">' + c.label + '</a>').join('') + '</div>';
+    }
+    d += '<div class="nav-item" data-nav="' + item.id + '">'
+       + '<button class="nav-link" ' + topClick + '>' + item.label + badgeHtml + caret + '</button>'
+       + dd + '</div>';
+
+    m += '<div class="mnav-group" data-nav="' + item.id + '">'
+       + '<div class="mnav-title">' + item.label + badgeHtml + '</div>'
+       + (hasChildren ? item.children.map(c =>
+           '<a class="mnav-sub" onclick="' + _navEsc(c.onclick) + '">' + c.label + '</a>').join('') : '')
+       + '</div>';
+  });
+  desktop.innerHTML = d;
+  mobile.innerHTML = m;
+}
+
+function navGo(view) { if (view) goView(view); }
+
+function updateNavActive(viewId) {
+  NAV_CONFIG.forEach(item => {
+    const on = (item.views || (item.view ? [item.view] : [])).includes(viewId);
+    document.querySelectorAll('[data-nav="' + item.id + '"]').forEach(el => el.classList.toggle('active', on));
+  });
+}
+
+function toggleMobileNav(force) {
+  const nav = document.getElementById('mobile-nav');
+  const ov = document.getElementById('mobile-nav-overlay');
+  if (!nav || !ov) return;
+  const open = (force === undefined) ? !nav.classList.contains('open') : !!force;
+  nav.classList.toggle('open', open);
+  ov.classList.toggle('open', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+function closeMobileNav() { toggleMobileNav(false); }
 
 function setStep(n) {
   document.querySelectorAll('#steps .step').forEach(s => {
@@ -6410,7 +6584,7 @@ function renderForm4(applied, agg) {
       // 기타란: 체크박스 + 라벨 + 넓은 입력칸 (안내문구 포함)
       return '<div style="font-size:9pt;line-height:2.3;">'
         + '<label style="display:inline;"><input type="checkbox" data-form4="doc5" ' + (checked?'checked':'') + '> ' + d.label + ' : </label>'
-        + '<div class="editable-field" contenteditable="true" data-form4="doc5-text" data-placeholder="사유서, 국민연금가입자 가입증명 등 기타 제출 서류를 입력하세요" style="display:block;min-height:48px;border:1px dashed #bbb;border-radius:4px;padding:6px 8px;margin-top:4px;font-size:9pt;background:#fffef5;"></div>'
+        + '<div class="editable-field" contenteditable="true" data-form4="doc5-text" data-placeholder="사유서, 건강보험 자격득실 확인서 등 기타 제출 서류를 입력하세요" style="display:block;min-height:48px;border:1px dashed #bbb;border-radius:4px;padding:6px 8px;margin-top:4px;font-size:9pt;background:#fffef5;"></div>'
         + '</div>';
     }
     return '<label style="display:block;font-size:9pt;line-height:2.3;"><input type="checkbox" data-form4="' + d.key + '" ' + (checked?'checked':'') + '> ' + d.label + '</label>';
@@ -6565,7 +6739,7 @@ function renderForm14(applied, agg) {
 
   // 회색 헤더 셀 / 일반 셀 / 협회작성(회색) 빈칸
   const GH = 'background:#d9d9d9;border:1px solid #000;padding:4px 6px;text-align:center;vertical-align:middle;font-weight:600;font-size:8.5pt;';
-  const TD = 'border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:8.5pt;';
+  const TD = 'border:1px solid #000;padding:4px 6px;vertical-align:middle;font-size:8.5pt;word-break:break-all;';
   const GRAY = 'background:#d9d9d9;border:1px solid #000;padding:4px 6px;font-size:8.5pt;';
   const EF = 'class="editable-field" contenteditable="true"';
 
@@ -6603,21 +6777,27 @@ function renderForm14(applied, agg) {
       <div style="text-align:center;font-size:16pt;font-weight:700;letter-spacing:4px;margin:5px 0 6px;">건설기술인 경력변경신고서</div>
       <div style="font-size:8pt;margin-bottom:3px;">※ 어두운 칸은 신고인이 적지 않으며, 유의사항을 확인하시고 작성하여 주시기 바랍니다.</div>
 
-      <table style="width:100%;border-collapse:collapse;">
-        <!-- 접수 행 (협회작성 - 회색) -->
+      <!-- 접수 행 (협회작성) - 별도 테이블, 8칸 고정 -->
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <colgroup><col style="width:12%;"><col style="width:13%;"><col style="width:12%;"><col style="width:13%;"><col style="width:12%;"><col style="width:13%;"><col style="width:12%;"><col style="width:13%;"></colgroup>
         <tr>
-          <th style="${GH}width:55px;">접수번호</th>
-          <td style="${GRAY}width:90px;">&nbsp;</td>
+          <th style="${GH}">접수번호</th>
+          <td style="${GRAY}">&nbsp;</td>
           <th style="${GH}">접수일</th>
-          <td style="${GRAY}width:90px;">&nbsp;</td>
+          <td style="${GRAY}">&nbsp;</td>
           <th style="${GH}">실명확인</th>
-          <td style="${GRAY}width:90px;">&nbsp;</td>
+          <td style="${GRAY}">&nbsp;</td>
           <th style="${GH}">처리기간</th>
-          <td style="${GRAY}text-align:center;width:45px;white-space:nowrap;">즉시</td>
+          <td style="${GRAY}text-align:center;white-space:nowrap;">즉시</td>
         </tr>
+      </table>
+
+      <!-- 본문 표 (인적/종전/현재 소속회사) - 8칸 고정 -->
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <colgroup><col style="width:9%;"><col style="width:13%;"><col style="width:13%;"><col style="width:13%;"><col style="width:13%;"><col style="width:13%;"><col style="width:13%;"><col style="width:13%;"></colgroup>
         <!-- 인적사항 -->
         <tr>
-          <th style="${GH}width:55px;" rowspan="3">인적사항</th>
+          <th style="${GH}" rowspan="3">인적사항</th>
           <td style="${TD}" colspan="4"><strong>성명</strong> <span ${EF} data-form14="name">${esc(pi.name||'')}</span></td>
           <td style="${TD}" colspan="3"><strong>주민등록번호</strong> <span ${EF} data-form14="rrn" style="min-width:120px;"></span></td>
         </tr>
@@ -6631,7 +6811,7 @@ function renderForm14(applied, agg) {
         </tr>
         <!-- 종전 소속회사 -->
         <tr>
-          <th style="${GH}width:55px;" rowspan="3">종전<br>소속회사</th>
+          <th style="${GH}" rowspan="3">종전<br>소속회사</th>
           <td style="${TD}" colspan="5"><strong>회사명(대표자)</strong> <span ${EF} data-form14="prev-company" style="min-width:180px;"></span></td>
           <td style="${TD}" colspan="2"><strong>법인 또는 사업자등록번호</strong><br><span ${EF} data-form14="prev-bizno"></span></td>
         </tr>
@@ -6646,7 +6826,7 @@ function renderForm14(applied, agg) {
         </tr>
         <!-- 현재 소속회사 -->
         <tr>
-          <th style="${GH}width:55px;" rowspan="3">현재<br>소속회사</th>
+          <th style="${GH}" rowspan="3">현재<br>소속회사</th>
           <td style="${TD}" colspan="5"><strong>회사명(대표자)</strong> <span ${EF} data-form14="cur-company" style="min-width:180px;"></span></td>
           <td style="${TD}" colspan="2"><strong>사업자등록번호(법인등록번호)</strong><br><span ${EF} data-form14="cur-bizno"></span></td>
         </tr>
@@ -6661,10 +6841,11 @@ function renderForm14(applied, agg) {
       </table>
 
       <div style="text-align:center;font-weight:700;font-size:10pt;margin:10px 0 4px;background:#d9d9d9;border:1px solid #000;padding:3px;">기술경력</div>
-      <table style="width:100%;border-collapse:collapse;font-size:8pt;">
+      <table style="width:100%;border-collapse:collapse;font-size:8pt;table-layout:fixed;">
+        <colgroup><col style="width:13%;"><col style="width:11%;"><col style="width:11%;"><col style="width:10%;"><col style="width:11%;"><col style="width:11%;"><col style="width:11%;"><col style="width:11%;"><col style="width:11%;"></colgroup>
         <thead>
           <tr>
-            <th style="${GH}font-size:8pt;" colspan="2">참여사업명</th>
+            <th style="${GH}font-size:8pt;">참여사업명</th>
             <th style="${GH}font-size:8pt;">참여기간</th>
             <th style="${GH}font-size:8pt;">발주자(청)</th>
             <th style="${GH}font-size:8pt;">공사종류</th>
@@ -6676,7 +6857,7 @@ function renderForm14(applied, agg) {
           </tr>
         </thead>
         <tbody>
-          ${careerRows || '<tr><td style="' + TD + 'text-align:center;padding:16px;" colspan="10">경정 대상 프로젝트가 없습니다.</td></tr>'}
+          ${careerRows || '<tr><td style="' + TD + 'text-align:center;padding:16px;" colspan="9">경정 대상 프로젝트가 없습니다.</td></tr>'}
         </tbody>
       </table>
 
