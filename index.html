@@ -1641,12 +1641,17 @@
         <li class="us-item" data-step="4"><span class="us-dot"></span><span>폼에 자동 입력</span><span class="us-state">대기</span></li>
       </ul>
 
-      <!-- 명언 슬라이드 -->
-      <div id="quote-slide" style="margin-top:14px;padding:14px 16px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:10px;border-left:3px solid var(--accent);min-height:72px;display:flex;flex-direction:column;justify-content:center;transition:opacity 0.6s ease;">
-        <div id="quote-text" style="font-size:16px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink);line-height:1.7;font-style:italic;font-weight:500;"></div>
-        <div id="quote-author" style="font-size:14px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink-2);margin-top:8px;text-align:right;font-weight:600;"></div>
+      <!-- 명언 슬라이드 (좌우 화살표 + 모바일 스와이프) -->
+      <div style="margin-top:14px;display:flex;align-items:stretch;gap:6px;">
+        <button onclick="quotePrev()" aria-label="이전 명언" style="flex-shrink:0;width:32px;border:none;background:transparent;color:var(--accent);font-size:20px;font-weight:700;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='transparent'">‹</button>
+        <div id="quote-slide" style="flex:1;padding:14px 16px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:10px;border-left:3px solid var(--accent);min-height:72px;display:flex;flex-direction:column;justify-content:center;transition:opacity 0.4s ease;touch-action:pan-y;user-select:none;">
+          <div id="quote-text" style="font-size:16px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink);line-height:1.7;font-style:italic;font-weight:500;"></div>
+          <div id="quote-author" style="font-size:14px;font-family:'맑은 고딕','Malgun Gothic',sans-serif;color:var(--ink-2);margin-top:8px;text-align:right;font-weight:600;"></div>
+        </div>
+        <button onclick="quoteNext()" aria-label="다음 명언" style="flex-shrink:0;width:32px;border:none;background:transparent;color:var(--accent);font-size:20px;font-weight:700;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='transparent'">›</button>
       </div>
       <div style="display:flex;justify-content:center;gap:5px;margin-top:8px;" id="quote-dots"></div>
+      <div style="text-align:center;font-size:10.5px;color:var(--muted);margin-top:6px;">← 좌우로 넘겨 다른 명언을 볼 수 있어요 →</div>
 
       <div style="text-align: center; margin-top: 12px;">
         <button class="btn ghost small" onclick="cancelUpload()" style="font-size: 12px; color: var(--muted);">
@@ -3650,6 +3655,21 @@ const _QUOTES = [
   { text: "오늘의 노력이 내일의 나를 만든다.", author: "한국 속담" },
   { text: "위대한 업적은 한 번에 이루어지지 않는다. 하루하루 쌓인 작은 노력들이 만들어 낸다.", author: "빈센트 반 고흐" },
   { text: "정직과 성실함은 결코 낡지 않는다.", author: "앤드류 카네기" },
+  { text: "행동은 모든 성공의 기초가 되는 열쇠다.", author: "파블로 피카소" },
+  { text: "할 수 있다고 믿어라. 그러면 이미 절반은 해낸 것이다.", author: "시어도어 루스벨트" },
+  { text: "기회는 일어나는 것이 아니라 만들어 내는 것이다.", author: "크리스 그로서" },
+  { text: "준비에 실패하는 것은 실패를 준비하는 것이다.", author: "벤자민 프랭클린" },
+  { text: "느리게 가는 것을 두려워 말고, 멈춰 서 있는 것을 두려워하라.", author: "중국 속담" },
+  { text: "꿈을 꿀 수 있다면, 이룰 수도 있다.", author: "월트 디즈니" },
+  { text: "포기하지 않는 한 실패는 없다.", author: "토마스 에디슨" },
+  { text: "지식에 대한 투자가 가장 큰 이익을 낸다.", author: "벤자민 프랭클린" },
+  { text: "인내는 쓰지만 그 열매는 달다.", author: "장 자크 루소" },
+  { text: "어제로부터 배우고, 오늘을 살며, 내일을 향해 희망을 가져라.", author: "알베르트 아인슈타인" },
+  { text: "위대한 일을 하는 유일한 방법은 자신이 하는 일을 사랑하는 것이다.", author: "스티브 잡스" },
+  { text: "행운은 준비가 기회를 만났을 때 생긴다.", author: "세네카" },
+  { text: "변화를 원한다면 스스로 그 변화가 되어라.", author: "마하트마 간디" },
+  { text: "끝날 때까지 끝난 게 아니다.", author: "요기 베라" },
+  { text: "최선을 다하고 있다고 말하는 것으로는 부족하다. 필요한 일을 반드시 해내야 한다.", author: "윈스턴 처칠" },
 ];
 
 let _quoteTimer = null;
@@ -3661,42 +3681,77 @@ function _shuffleQuotes() {
 }
 
 function _showQuote(idx) {
-  const q = _quoteShuffled[idx % _quoteShuffled.length];
+  if (_quoteShuffled.length === 0) return;
+  // 순환 인덱스 정규화
+  const n = _quoteShuffled.length;
+  _quoteCurrent = ((idx % n) + n) % n;
+  const q = _quoteShuffled[_quoteCurrent];
   const el = document.getElementById('quote-text');
   const au = document.getElementById('quote-author');
   const slide = document.getElementById('quote-slide');
   const dots = document.getElementById('quote-dots');
   if (!el || !au) return;
 
-  // 페이드 아웃
+  // 페이드 아웃 → 교체 → 페이드 인
   if (slide) slide.style.opacity = '0';
   setTimeout(() => {
     el.textContent = `"${q.text}"`;
     au.textContent = `— ${q.author}`;
     if (slide) slide.style.opacity = '1';
-  }, 300);
+  }, 200);
 
-  // 도트 업데이트 (최대 5개)
+  // 도트 업데이트 (최대 5개, 현재 위치 비례 표시)
   if (dots) {
-    const total = Math.min(5, _quoteShuffled.length);
+    const total = Math.min(5, n);
+    const activeIdx = Math.floor((_quoteCurrent / n) * total);
     dots.innerHTML = Array.from({length: total}, (_, i) =>
-      `<span style="width:6px;height:6px;border-radius:50%;background:${i === idx % total ? 'var(--accent)' : 'var(--line-2)'};display:inline-block;transition:background 0.3s;"></span>`
+      `<span style="width:6px;height:6px;border-radius:50%;background:${i === activeIdx ? 'var(--accent)' : 'var(--line-2)'};display:inline-block;transition:background 0.3s;"></span>`
     ).join('');
   }
+}
+
+// 수동으로 다음/이전 명언 (타이머 리셋)
+function quotePrev() { _showQuote(_quoteCurrent - 1); _restartQuoteTimer(); }
+function quoteNext() { _showQuote(_quoteCurrent + 1); _restartQuoteTimer(); }
+
+function _restartQuoteTimer() {
+  if (_quoteTimer) clearInterval(_quoteTimer);
+  _quoteTimer = setInterval(() => { _showQuote(_quoteCurrent + 1); }, 9000);
 }
 
 function startQuoteSlide() {
   _shuffleQuotes();
   _quoteCurrent = 0;
   _showQuote(0);
-  _quoteTimer = setInterval(() => {
-    _quoteCurrent++;
-    _showQuote(_quoteCurrent);
-  }, 9000);
+  _restartQuoteTimer();
+  _attachQuoteSwipe();
 }
 
 function stopQuoteSlide() {
   if (_quoteTimer) { clearInterval(_quoteTimer); _quoteTimer = null; }
+}
+
+// 모바일 스와이프 제스처 등록
+let _quoteSwipeAttached = false;
+function _attachQuoteSwipe() {
+  if (_quoteSwipeAttached) return;
+  const slide = document.getElementById('quote-slide');
+  if (!slide) return;
+  let startX = 0, startY = 0;
+  slide.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  slide.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    // 가로 스와이프가 세로보다 크고 40px 이상일 때만
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) quoteNext();  // 왼쪽으로 밀기 → 다음
+      else quotePrev();         // 오른쪽으로 밀기 → 이전
+    }
+  }, { passive: true });
+  _quoteSwipeAttached = true;
 }
 
 function showUploadModal() {
