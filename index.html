@@ -2056,7 +2056,7 @@ function _anthropicToGemini(body) {
     contents,
     generationConfig: {
       maxOutputTokens: body.max_tokens || 32000,
-      temperature: body.temperature !== undefined ? body.temperature : 0.5,
+      temperature: body.temperature !== undefined ? body.temperature : 0.2,
       responseMimeType: jsonExpected ? 'application/json' : 'text/plain'
     }
   };
@@ -4208,6 +4208,7 @@ ${text}`;
     res = await callAnthropic(apiKey, {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 16000,
+      temperature: 0,
       messages: [{ role: 'user', content: prompt }]
     }, 0, signal);
   } catch (networkErr) {
@@ -4294,6 +4295,7 @@ ${text}`;
       const vRes = await callAnthropic(apiKey, {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 16000,
+      temperature: 0,
         messages: [{ role: 'user', content: verifyPrompt }]
       }, 0, signal);
 
@@ -4880,6 +4882,7 @@ async function extractInfoFromImage(apiKey, file, signal) {
   const res = await callAnthropic(apiKey, {
     model: 'claude-sonnet-4-20250514',
     max_tokens: 32000,
+      temperature: 0,
     messages: [{
       role: 'user',
       content: [
@@ -4907,6 +4910,7 @@ async function extractInfoFromPdfBinary(apiKey, file, signal) {
   const firstRes = await callAnthropic(apiKey, {
     model: 'claude-sonnet-4-20250514',
     max_tokens: 32000,
+      temperature: 0,
     messages: [{
       role: 'user',
       content: [
@@ -4929,6 +4933,7 @@ async function extractInfoFromPdfBinary(apiKey, file, signal) {
       const verifyRes = await callAnthropic(apiKey, {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 32000,
+      temperature: 0,
         messages: [{
           role: 'user',
           content: [
@@ -5075,6 +5080,7 @@ async function callClaude(apiKey, prompt) {
   const res = await callAnthropic(apiKey, {
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1500,
+      temperature: 0,
     messages: [{ role: 'user', content: prompt }]
   });
   if (!res.ok) {
@@ -5430,21 +5436,37 @@ function sanitize(r, p, pre) {
       발주자: p.owner, 공사종류: p.workType, 직무분야: p.field, 전문분야: p.specialty, 담당업무: p.duty
     })[k];
   });
-  r.오류_의심항목 = r.오류_의심항목 || pre.errors;
-  r.경정_필요도 = r.경정_필요도 || pre.risk;
+  // ===== 일관성 강화: 위험도·오류항목은 규칙 기반(pre)을 항상 우선 =====
+  // AI는 같은 입력에도 결과가 흔들리므로, 정량 판정(위험도/오류)은 결정론적 규칙으로 고정.
+  // AI는 서술형(분석의견·경정방향 등)에만 보조적으로 사용 → 같은 데이터면 항상 같은 위험도.
+  // 규칙이 오류를 잡았으면 규칙 우선, 규칙이 아무것도 못 잡았을 때만 AI 결과 참고.
+  if (pre.errors && pre.errors.length > 0) {
+    r.오류_의심항목 = pre.errors;       // 규칙이 오류 발견 → 규칙 기준 고정
+    r.경정_필요도 = pre.risk;
+  } else {
+    // 규칙상 문제없음 → 규칙 기준(낮음) 우선, AI가 굳이 위험으로 본 것은 무시
+    r.오류_의심항목 = pre.errors;       // 빈 배열
+    r.경정_필요도 = pre.risk;           // 낮음
+  }
 
-  // ★ 본사 경력은 AI 판정과 무관하게 규칙 기반 결과를 강제 적용 (AI 오판 방지)
-  // 본사/감리부 등 본사 근무는 발주자·공사종류·전문분야 공란이 정상이므로 위험도 낮음
+  // ★ 본사 경력은 규칙 기반 강제 (AI 오판 방지)
   const _isHonsaName = _isHeadOffice(p.name);
   if (_isHonsaName) {
-    r.경정_필요도 = pre.risk;          // 규칙 기반 위험도로 덮어쓰기
-    r.오류_의심항목 = pre.errors;       // 규칙 기반 오류목록으로 덮어쓰기
+    r.경정_필요도 = pre.risk;
+    r.오류_의심항목 = pre.errors;
     if (pre.risk === '낮음') {
       r.AI_분석의견 = '본사(또는 본사 부서) 근무 경력으로, 발주자·공사종류·전문분야 공란은 정상입니다. 별도 경정이 필요하지 않습니다.';
     }
   }
   r.추천_경정방향 = r.추천_경정방향 || {};
-  r.필요_증빙자료 = (r.필요_증빙자료 && r.필요_증빙자료.length) ? r.필요_증빙자료 : pickDocs(pre.errors);
+  // 일관성: 규칙 기반 추천(recos)을 우선 적용 (있는 항목만 덮어씀)
+  if (pre.recos) {
+    Object.keys(pre.recos).forEach(k => {
+      const mapKey = { workType: '공사종류', duty: '담당업무', field: '직무분야', specialty: '전문분야', owner: '발주자', period: '참여기간' }[k] || k;
+      if (pre.recos[k]) r.추천_경정방향[mapKey] = pre.recos[k];
+    });
+  }
+  r.필요_증빙자료 = pickDocs(pre.errors);
   r.AI_분석의견 = r.AI_분석의견 || composeOpinion(p, pre);
   r.경정신고_가이드 = r.경정신고_가이드 || generateDraft(p, pre);
   r.주의사항 = r.주의사항 || '본 결과는 사전 검토용 컨설팅 자료입니다.';
@@ -5571,7 +5593,10 @@ function renderResultList() {
   const items = results
     .map((r, i) => ({ r, i }))
     .filter(x => currentFilter === 'all' || x.r.경정_필요도 === currentFilter)
-    .sort((a, b) => (_riskOrder[a.r.경정_필요도] ?? 4) - (_riskOrder[b.r.경정_필요도] ?? 4));
+    .sort((a, b) => {
+      const d = (_riskOrder[a.r.경정_필요도] ?? 4) - (_riskOrder[b.r.경정_필요도] ?? 4);
+      return d !== 0 ? d : (a.i - b.i);  // 위험도 같으면 원래 순번 유지 (안정 정렬)
+    });
 
   if (items.length === 0) {
     wrap.innerHTML = '<div style="padding: 60px; text-align: center; color: var(--muted); border: 1px dashed var(--line);">해당 위험도의 프로젝트가 없습니다.</div>';
