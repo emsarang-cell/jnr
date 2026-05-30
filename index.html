@@ -3925,7 +3925,7 @@ async function handleFile(event) {
     await sleep(500);
     hideUploadModal();
     _uploadAbortCtrl = null;
-    toast(`✅ 업로드 완료! 기본정보 추출, 프로젝트 ${projects.length}건 자동 입력됐습니다.\n누락된 항목은 직접 수정 후 AI 분석을 시작하세요.`, 10000);
+    toast(`✅ 업로드 완료! 기본정보 추출, 프로젝트 ${projects.length}건 자동 입력됐습니다.\n누락된 항목은 직접 수정 후 AI 분석을 시작하세요.`, 7000);
     document.querySelector('#pi-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   } catch (e) {
