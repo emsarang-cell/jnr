@@ -1408,11 +1408,11 @@
             <div style="font-size: 12.5px; color: var(--muted);">
               총 <strong id="row-count" style="color: var(--ink);">0</strong>개 프로젝트 입력됨
             </div>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <button class="btn ghost small" onclick="saveToStorage()" title="현재 입력 데이터를 브라우저에 저장">💾 저장</button>
-              <button class="btn ghost small" onclick="loadFromStorage()" title="저장된 데이터 불러오기" id="btn-load-storage">📂 불러오기</button>
-              <button class="btn ghost small" onclick="deleteStorage()" title="저장된 데이터 삭제" id="btn-delete-storage" style="color:var(--danger);">🗑 저장 삭제</button>
-              <span id="autosave-indicator" style="font-size:11px; color:var(--muted); margin-left:4px;"></span>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap; overflow-x:auto;">
+              <button class="btn ghost small" onclick="saveToStorage()" title="현재 입력 데이터를 브라우저에 저장" style="white-space:nowrap; flex-shrink:0;">💾 저장</button>
+              <button class="btn ghost small" onclick="loadFromStorage()" title="저장된 데이터 불러오기" id="btn-load-storage" style="white-space:nowrap; flex-shrink:0;">📂 불러오기</button>
+              <button class="btn ghost small" onclick="deleteStorage()" title="저장된 데이터 삭제" id="btn-delete-storage" style="color:var(--danger); white-space:nowrap; flex-shrink:0;">🗑 저장삭제</button>
+              <span id="autosave-indicator" style="font-size:11px; color:var(--muted); margin-left:4px; flex-shrink:0;"></span>
             </div>
             <div id="storage-status" style="font-size:11.5px; color:var(--muted);"></div>
           </div>
@@ -2072,8 +2072,20 @@ async function callGeminiDirect(apiKey, anthropicBody, signal) {
 /* ============================================================
    PDF.JS WORKER
    ============================================================ */
+// PDF.js 워커 설정 — 모바일에서는 DataCloneError 방지를 위해 워커 비활성화
+const _IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 if (typeof pdfjsLib !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  try {
+    if (_IS_MOBILE) {
+      // 모바일: 워커 끄고 메인 스레드에서 처리 (DataCloneError/fake worker 문제 회피)
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      pdfjsLib.GlobalWorkerOptions.workerPort = null;
+    } else {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  } catch(e) {
+    console.warn('PDF worker 설정 실패:', e);
+  }
 }
 
 /* ============================================================
@@ -3744,11 +3756,16 @@ async function handleFile(event) {
       setUploadStep(3, 'done');
 
     } else if (isPdf) {
-      // PDF → 먼저 텍스트 추출, 실패하면 Vision OCR fallback
+      // PDF → 텍스트 추출 시도 (모바일은 워커 문제로 불안정 → 실패 시 Vision OCR로 자동 전환)
       setUploadStepLabel(2, 'PDF 텍스트 추출');
       setUploadStep(2, 'active');
       let text = '';
-      try { text = await extractPdfText(file); } catch (err) { console.warn('PDF text extract failed:', err); }
+      try {
+        text = await extractPdfText(file);
+      } catch (err) {
+        console.warn('PDF 텍스트 추출 실패 → Vision OCR로 전환:', err.message);
+        text = '';
+      }
       const hasText = text && text.trim().length >= 80;
 
       if (hasText) {
@@ -3756,16 +3773,17 @@ async function handleFile(event) {
         setUploadStepLabel(3, 'AI 정보 구조화');
         setUploadStep(3, 'active');
         _lastRawText = text;
-      extracted = await extractInfoFromText(apiKey, text, signal);
+        extracted = await extractInfoFromText(apiKey, text, signal);
         setUploadStep(3, 'done');
       } else {
-        setUploadStepLabel(2, '스캔 PDF 감지 · Vision OCR로 전환');
+        // 텍스트 추출 실패 또는 스캔본 → Vision OCR (PDF를 AI에 직접 전송, 워커 무관 → 모바일 안전)
+        setUploadStepLabel(2, '이미지 기반 PDF · AI Vision으로 분석');
         await sleep(300);
         setUploadStep(2, 'done');
         setUploadStepLabel(3, 'AI Vision으로 OCR + 정보 구조화');
         setUploadStep(3, 'active');
         extracted = await extractInfoFromPdfBinary(apiKey, file, signal);
-        _lastRawText = '';  // 스캔PDF는 원문 없음 → specialty 전체 재검증
+        _lastRawText = '';
         setUploadStep(3, 'done');
       }
 
@@ -3860,7 +3878,8 @@ async function handleFile(event) {
       );
       if (openTextInput) openTextInputModal();
     } else {
-      alert('파일 처리 실패:\n\n' + msg + '\n\nF12 → Console 탭에서 더 자세한 오류를 확인할 수 있습니다.');
+      const detail = msg || '알 수 없는 오류가 발생했습니다.';
+      toast('⚠️ 파일 분석 실패\n\n' + detail + '\n\n💡 해결: "📝 텍스트 직접 입력" 버튼으로 경력 내용을 붙여넣어 진행하실 수 있습니다.', 15000);
     }
   }
 }
@@ -3868,12 +3887,32 @@ async function handleFile(event) {
 async function extractPdfText(file) {
   if (typeof pdfjsLib === 'undefined') throw new Error('PDF 라이브러리를 불러오지 못했습니다 (네트워크 확인).');
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  // 모바일 호환: Uint8Array로 전달 + 워커 비활성화 옵션으로 DataCloneError 방지
+  const uint8 = new Uint8Array(arrayBuffer);
+  let pdf;
+  try {
+    pdf = await pdfjsLib.getDocument({
+      data: uint8,
+      disableWorker: _IS_MOBILE,   // 모바일은 워커 끄기
+      isEvalSupported: false,
+      useSystemFonts: true,
+      disableFontFace: _IS_MOBILE
+    }).promise;
+  } catch(err) {
+    // 폴백: 워커 완전히 끄고 재시도
+    console.warn('PDF 1차 실패, 워커 끄고 재시도:', err.message);
+    pdf = await pdfjsLib.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      disableWorker: true,
+      isEvalSupported: false,
+      useSystemFonts: true,
+      disableFontFace: true
+    }).promise;
+  }
   let text = '';
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    // 페이지 구분자 삽입 → 청크 분할 시 페이지 경계 존중
     text += `\n(${i}쪽 / ${pdf.numPages}쪽)\n`;
     text += content.items.map(it => it.str).join(' ') + '\n\n';
   }
