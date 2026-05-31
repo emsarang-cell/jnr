@@ -582,6 +582,92 @@
 
   .footnote { color: var(--muted); font-size: 12.5px; padding: 16px 0 0; border-top: 1px solid var(--line); margin-top: 36px; line-height: 1.7; }
 
+  /* ====== AUTH / LOGIN ====== */
+  .auth-wrap { max-width: 440px; margin: 40px auto; }
+  .auth-card {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 16px;
+    padding: 40px 36px; box-shadow: var(--shadow-lg);
+  }
+  .auth-brand { text-align: center; margin-bottom: 28px; }
+  .auth-brand .mark {
+    width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 16px;
+    background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 16px; letter-spacing: -0.02em;
+  }
+  .auth-brand h1 { font-size: 22px; margin: 0 0 8px; letter-spacing: -0.03em; }
+  .auth-brand p { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.6; }
+  .social-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 13px 16px; border-radius: 10px; font-size: 14.5px; font-weight: 600;
+    border: 1px solid var(--line-2); background: #fff; color: var(--ink);
+    margin-bottom: 10px; transition: filter .12s ease, box-shadow .12s ease, transform .05s ease;
+  }
+  .social-btn:hover { box-shadow: var(--shadow); }
+  .social-btn:active { transform: translateY(1px); }
+  .social-btn .ic { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+  .social-google { background: #fff; color: #1f2937; border-color: var(--line-2); }
+  .social-kakao { background: #FEE500; color: #181600; border-color: #FEE500; }
+  .social-naver { background: #03C75A; color: #fff; border-color: #03C75A; }
+  .social-kakao:hover, .social-naver:hover { filter: brightness(0.97); }
+  .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: var(--muted); font-size: 12px; }
+  .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .guest-btn {
+    width: 100%; padding: 13px 16px; border-radius: 10px; font-size: 14px; font-weight: 600;
+    border: 1px dashed var(--line-2); background: var(--bg-2); color: var(--ink-2);
+    transition: background .12s ease;
+  }
+  .guest-btn:hover { background: var(--line); }
+  .auth-foot { text-align: center; font-size: 12px; color: var(--muted); margin-top: 22px; line-height: 1.7; }
+  .auth-locked-note {
+    background: var(--danger-bg); border: 1px solid #fecdd3; color: #be123c;
+    border-radius: 10px; padding: 12px 14px; font-size: 12.5px; margin-top: 16px; line-height: 1.6;
+  }
+
+  /* ====== ACCESS DENIED ====== */
+  .denied-wrap { max-width: 460px; margin: 80px auto; text-align: center; }
+  .denied-wrap .icon { font-size: 44px; margin-bottom: 16px; }
+  .denied-wrap h1 { font-size: 24px; margin: 0 0 10px; }
+  .denied-wrap p { color: var(--muted); font-size: 14px; margin: 0 0 24px; line-height: 1.7; }
+
+  /* ====== ADMIN DASHBOARD ====== */
+  .admin-layout { display: grid; grid-template-columns: 232px 1fr; gap: 28px; align-items: start; }
+  .admin-side {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px; position: sticky; top: 84px;
+  }
+  .admin-side .side-title { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 6px 10px 10px; font-weight: 700; }
+  .admin-nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    padding: 10px 12px; border-radius: 9px; font-size: 14px; font-weight: 500;
+    color: var(--ink-2); background: transparent; border: none; cursor: pointer; margin-bottom: 2px;
+    transition: background .12s ease, color .12s ease;
+  }
+  .admin-nav-item:hover { background: var(--bg-2); color: var(--ink); }
+  .admin-nav-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 700; }
+  .admin-main { min-width: 0; }
+  .admin-panel { display: none; }
+  .admin-panel.active { display: block; }
+  .admin-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+  .admin-stat { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .admin-stat .lbl { font-size: 11px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+  .admin-stat .val { font-size: 26px; font-weight: 800; margin-top: 6px; letter-spacing: -0.02em; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .admin-table th, .admin-table td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .admin-table th { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .admin-table tr:hover td { background: var(--bg-2); }
+  .role-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .role-guest { background: var(--bg-2); color: var(--muted); }
+  .role-member { background: var(--accent-bg); color: var(--accent); }
+  .role-admin { background: #fef3c7; color: #b45309; }
+
+  @media (max-width: 880px) {
+    .admin-layout { grid-template-columns: 1fr; }
+    .admin-side { position: static; display: flex; gap: 6px; overflow-x: auto; }
+    .admin-side .side-title { display: none; }
+    .admin-nav-item { white-space: nowrap; margin-bottom: 0; }
+    .admin-stat-grid { grid-template-columns: 1fr 1fr; }
+  }
+
   /* ====== RESPONSIVE ====== */
   @media (max-width: 980px) {
     h1.title { font-size: 42px; }
@@ -1365,6 +1451,7 @@
         <div class="step-sep"></div>
         <div class="step" data-step="4"><span class="n">4</span><span>보고서</span></div>
       </nav>
+      <div class="auth-status" id="auth-status" style="display:flex; align-items:center; gap:8px; font-size:13px;"></div>
       <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="메뉴 열기">☰</button>
     </div>
   </div>
@@ -1392,7 +1479,7 @@
           제출서류와 신고서식까지 자동 생성합니다.
         </p>
         <div class="cta-row">
-          <button class="btn" onclick="triggerFileUpload()">경력증명서 업로드 <span class="btn-arrow">→</span></button>
+          <button class="btn" onclick="requireAuthThen(triggerFileUpload)">경력증명서 업로드 <span class="btn-arrow">→</span></button>
           <button class="btn ghost" onclick="openTextInputModal()">📝 텍스트 직접 입력</button>
           <button class="btn ghost" onclick="loadSample()">샘플로 체험하기</button>
           <button class="btn ghost" onclick="addEmptyRow()">직접 입력</button>
@@ -1419,7 +1506,7 @@
       <div class="feature">
         <div class="num">02 / 산정</div>
         <h4 class="serif">경정 필요도 평가</h4>
-        <p>오류 유형별 위험도를 낮음·보통·높음·매우높음 4단계로 정량 평가합니다.</p>
+        <p>오류 유형별 필요도를 낮음·보통·높음·매우높음 4단계로 정량 평가합니다.</p>
       </div>
       <div class="feature">
         <div class="num">03 / 처방</div>
@@ -1537,16 +1624,18 @@
 
         <div class="panel-foot">
           <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-            <div style="font-size: 12.5px; color: var(--muted);">
+            <div style="font-size: 12.5px; color: var(--muted); flex-shrink:0;">
               총 <strong id="row-count" style="color: var(--ink);">0</strong>개 프로젝트 입력됨
             </div>
-            <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap; overflow-x:auto;">
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:nowrap;">
               <button class="btn ghost small" onclick="saveToStorage()" title="현재 입력 데이터를 브라우저에 저장" style="white-space:nowrap; flex-shrink:0;">💾 저장</button>
               <button class="btn ghost small" onclick="loadFromStorage()" title="저장된 데이터 불러오기" id="btn-load-storage" style="white-space:nowrap; flex-shrink:0;">📂 불러오기</button>
               <button class="btn ghost small" onclick="deleteStorage()" title="저장된 데이터 삭제" id="btn-delete-storage" style="color:var(--danger); white-space:nowrap; flex-shrink:0;">🗑 저장삭제</button>
-              <span id="autosave-indicator" style="font-size:11px; color:var(--muted); margin-left:4px; flex-shrink:0;"></span>
             </div>
-            <div id="storage-status" style="font-size:11.5px; color:var(--muted);"></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:nowrap; overflow-x:auto; margin-top:8px; font-size:11.5px; color:var(--muted); white-space:nowrap;">
+            <span id="autosave-indicator" style="flex-shrink:0;"></span>
+            <span id="storage-status" style="flex-shrink:0;"></span>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="btn ghost" onclick="startAnalysis(true)" title="AI 호출 0회. 즉시 결과. 분당 한도 무관.">
@@ -1565,6 +1654,8 @@
         '실제 수행업무'에는 담당업무 칸이 직책 위주로 기재되었을 때 시공·공사관리·품질관리 등 실제 업무를 보충 기입하면 진단 정확도가 높아집니다.
         <br><br>
         📖 진단 규칙 및 사용자 정의 규칙 관리는 <a href="javascript:goView('view-rules')" style="color: var(--accent); font-weight: 600;">규칙 가이드 페이지</a>에서 확인할 수 있습니다.
+        <br>
+        <span style="font-size:11px; color:var(--line-2);">※ 데모: <a href="javascript:demoBecomeAdmin()" style="color:var(--line-2);">관리자 권한으로 전환</a> (서버 OAuth 연동 전 테스트용)</span>
       </div>
     </div>
   </section>
@@ -1598,12 +1689,12 @@
       <div id="rules-detail-list" style="padding: 4px 0;"></div>
     </div>
 
-    <!-- 사용자 정의 규칙 -->
-    <div class="panel">
+    <!-- 사용자 정의 규칙 (관리자 전용 — 일반 사용자 화면에선 숨김) -->
+    <div class="panel rules-admin-only">
       <div class="panel-head">
         <div>
           <h3>사용자 정의 규칙 <span style="font-weight: 400; color: var(--muted); font-size: 13px;" id="custom-rules-count-page">0건</span></h3>
-          <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">여기서 정의한 규칙은 AI 정밀 분석 시 함께 적용됩니다.</div>
+          <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">여기서 정의한 규칙은 AI 정밀 분석 시 함께 적용됩니다. (관리자 전용)</div>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button class="btn small" onclick="openRuleEditor(null)">+ 규칙 추가</button>
@@ -1633,6 +1724,135 @@
 
       <div class="progress-list" id="progress-list"></div>
       <div class="usage-display" style="margin-top: 20px; text-align: center;"></div>
+    </div>
+  </section>
+
+  <!-- ====== VIEW: LOGIN (로그인 게이트) ====== -->
+  <section class="view" id="view-login">
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-brand">
+          <div class="mark">J&amp;R</div>
+          <h1 class="serif">건설기술인 경력경정 AI</h1>
+          <p>경력증명서를 업로드하고 오류·누락·경정 가능성을 진단해보세요.</p>
+        </div>
+
+        <button class="social-btn social-google" onclick="socialLogin('google')">
+          <span class="ic">G</span> Google로 계속하기
+        </button>
+        <button class="social-btn social-kakao" onclick="socialLogin('kakao')">
+          <span class="ic">💬</span> 카카오톡으로 계속하기
+        </button>
+        <button class="social-btn social-naver" onclick="socialLogin('naver')">
+          <span class="ic">N</span> 네이버로 계속하기
+        </button>
+
+        <div class="auth-divider">또는</div>
+
+        <button class="guest-btn" id="guest-start-btn" onclick="guestStart()">비회원으로 분석 시작하기</button>
+
+        <div class="auth-locked-note" id="guest-locked-note" style="display:none;">
+          현재 비회원 이용이 제한되어 있습니다. 위 소셜 계정으로 로그인 후 이용해 주세요.
+        </div>
+
+        <div class="auth-foot">
+          로그인 시 서비스 약관 및 개인정보처리방침에 동의하게 됩니다.<br>
+          <span style="font-size:11px; color:var(--line-2);">※ 데모: 실제 인증은 서버 OAuth 연동 시 활성화됩니다.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== VIEW: ACCESS DENIED ====== -->
+  <section class="view" id="view-denied">
+    <div class="denied-wrap">
+      <div class="icon">🔒</div>
+      <h1 class="serif">접근 권한이 없습니다.</h1>
+      <p>이 페이지는 관리자만 접근할 수 있습니다.<br>관리자 계정으로 로그인했는지 확인해 주세요.</p>
+      <button class="btn" onclick="goView('view-input')">홈으로 돌아가기</button>
+    </div>
+  </section>
+
+  <!-- ====== VIEW: ADMIN DASHBOARD ====== -->
+  <section class="view" id="view-admin">
+    <div class="section-head" style="margin-bottom: 20px;">
+      <div>
+        <div class="eyebrow">관리자</div>
+        <h2 class="serif">관리자 대시보드</h2>
+        <div class="sub">규칙·가이드·회원·이력을 관리합니다. (데모: 변경사항은 현재 세션에만 적용)</div>
+      </div>
+      <div><button class="btn ghost small" onclick="goView('view-input')">← 사용자 화면</button></div>
+    </div>
+
+    <div class="admin-layout">
+      <aside class="admin-side">
+        <div class="side-title">관리 메뉴</div>
+        <button class="admin-nav-item active" data-apanel="dashboard" onclick="switchAdminPanel('dashboard')">📊 대시보드</button>
+        <button class="admin-nav-item" data-apanel="rules" onclick="switchAdminPanel('rules')">📋 기본 규칙 관리</button>
+        <button class="admin-nav-item" data-apanel="guide" onclick="switchAdminPanel('guide')">📖 진단 가이드 관리</button>
+        <button class="admin-nav-item" data-apanel="members" onclick="switchAdminPanel('members')">👥 회원 관리</button>
+        <button class="admin-nav-item" data-apanel="history" onclick="switchAdminPanel('history')">🗂 분석 이력 관리</button>
+        <div style="border-top:1px solid var(--line); margin:10px 0; padding-top:10px;">
+          <div class="side-title" style="padding-bottom:6px;">서비스 설정</div>
+          <label style="display:flex; align-items:center; gap:8px; padding:8px 10px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" id="admin-guest-allow" checked onchange="setGuestPolicy(this.checked)">
+            비회원 이용 허용
+          </label>
+        </div>
+      </aside>
+
+      <div class="admin-main">
+        <!-- 대시보드 -->
+        <div class="admin-panel active" id="apanel-dashboard">
+          <div class="admin-stat-grid">
+            <div class="admin-stat"><div class="lbl">기본 규칙</div><div class="val" id="astat-rules">0</div></div>
+            <div class="admin-stat"><div class="lbl">진단 가이드</div><div class="val" id="astat-guide">0</div></div>
+            <div class="admin-stat"><div class="lbl">회원 수</div><div class="val" id="astat-members">0</div></div>
+            <div class="admin-stat"><div class="lbl">분석 이력</div><div class="val" id="astat-history">0</div></div>
+          </div>
+          <div class="help">관리자 데모 화면입니다. 좌측 메뉴에서 각 관리 화면으로 이동하세요. 실제 회원/이력 데이터는 서버 연동 시 표시됩니다.</div>
+        </div>
+
+        <!-- 기본 규칙 관리 -->
+        <div class="admin-panel" id="apanel-rules">
+          <div class="section-head" style="margin-bottom:14px;">
+            <h3 class="serif" style="margin:0; font-size:18px;">기본 규칙 관리</h3>
+            <button class="btn small" onclick="openRuleEditor(null)">+ 규칙 추가</button>
+          </div>
+          <div class="help" style="margin-bottom:16px;">기본 규칙의 추가·수정·삭제는 관리자만 가능합니다. 변경 내용은 AI 분석 프롬프트에 반영됩니다.</div>
+          <div id="admin-rules-list"></div>
+        </div>
+
+        <!-- 진단 가이드 관리 -->
+        <div class="admin-panel" id="apanel-guide">
+          <div class="section-head" style="margin-bottom:14px;">
+            <h3 class="serif" style="margin:0; font-size:18px;">진단 가이드 관리</h3>
+            <button class="btn small" onclick="openGuideEditor(null)">+ 가이드 추가</button>
+          </div>
+          <div class="help" style="margin-bottom:16px;">사용자에게 보여지는 진단 가이드를 편집합니다. 노출 여부·순서를 관리할 수 있습니다.</div>
+          <div id="admin-guide-list"></div>
+        </div>
+
+        <!-- 회원 관리 -->
+        <div class="admin-panel" id="apanel-members">
+          <h3 class="serif" style="margin:0 0 14px; font-size:18px;">회원 관리</h3>
+          <table class="admin-table">
+            <thead><tr><th>이메일</th><th>가입경로</th><th>권한</th><th>가입일</th></tr></thead>
+            <tbody id="admin-members-body"></tbody>
+          </table>
+          <div class="help" style="margin-top:16px;">※ 데모 데이터입니다. 실제 회원 목록은 서버 DB 연동 후 표시됩니다.</div>
+        </div>
+
+        <!-- 분석 이력 관리 -->
+        <div class="admin-panel" id="apanel-history">
+          <h3 class="serif" style="margin:0 0 14px; font-size:18px;">분석 이력 관리</h3>
+          <table class="admin-table">
+            <thead><tr><th>일시</th><th>이용자</th><th>프로젝트</th><th>경정 권고</th></tr></thead>
+            <tbody id="admin-history-body"></tbody>
+          </table>
+          <div class="help" style="margin-top:16px;">※ 데모 데이터입니다. 실제 분석 이력은 서버 연동 후 표시됩니다.</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1847,11 +2067,13 @@
         </div>
         <div class="re-row">
           <div class="re-field">
-            <label>권장 위험도</label>
+            <label>권장 필요도</label>
             <select id="re-severity">
               <option value="낮음">낮음</option>
               <option value="보통">보통</option>
+              <option value="보통~높음">보통~높음</option>
               <option value="높음" selected>높음</option>
+              <option value="높음~매우높음">높음~매우높음</option>
               <option value="매우높음">매우높음</option>
             </select>
           </div>
@@ -1867,6 +2089,62 @@
       <div style="display: flex; gap: 8px;">
         <button class="btn ghost small" onclick="closeRuleEditor()">취소</button>
         <button class="btn small" onclick="saveRuleFromEditor()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== GUIDE EDITOR MODAL (관리자: 진단 가이드 편집) ====== -->
+<div class="modal-bg" id="guide-editor-modal" style="z-index: 120;" onclick="if(event.target===this)closeGuideEditor()">
+  <div class="modal" style="max-width: 600px;">
+    <div class="modal-head">
+      <div style="flex:1;">
+        <div class="eyebrow" style="margin-bottom: 8px;">진단 가이드 관리</div>
+        <h2 class="serif" id="guide-editor-title" style="font-size: 22px;">진단 가이드 추가</h2>
+        <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">여기서 작성한 가이드는 사용자의 "진단 가이드" 화면에 보기 전용으로 표시됩니다.</div>
+      </div>
+      <button class="modal-close" onclick="closeGuideEditor()">✕</button>
+    </div>
+    <div class="modal-body" style="padding: 24px 32px;">
+      <div class="re-form">
+        <div class="re-field">
+          <label>진단 기준명</label>
+          <input type="text" id="ge-title" placeholder="예: 참여기간 일수 누락" maxlength="60">
+        </div>
+        <div class="re-field">
+          <label>설명</label>
+          <textarea id="ge-desc" placeholder="진단 기준에 대한 설명을 입력하세요."></textarea>
+        </div>
+        <div class="re-field">
+          <label>적용 사례</label>
+          <textarea id="ge-example" placeholder="예: 시작일 또는 종료일이 월까지만 기재된 경우"></textarea>
+        </div>
+        <div class="re-field">
+          <label>주의사항 (사용자 안내문)</label>
+          <textarea id="ge-notice" placeholder="예: 협회 경정신고 대상 여부를 확인해야 합니다."></textarea>
+        </div>
+        <div class="re-row">
+          <div class="re-field">
+            <label>관련 규칙</label>
+            <input type="text" id="ge-related" placeholder="예: 01 참여기간 일자 누락">
+          </div>
+          <div class="re-field">
+            <label>노출 순서</label>
+            <input type="number" id="ge-order" min="1" value="1">
+          </div>
+        </div>
+        <div class="re-field">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="ge-visible" checked> 사용자 화면에 노출
+          </label>
+        </div>
+      </div>
+    </div>
+    <div style="padding: 16px 32px; background: var(--bg-2); border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; align-items: center;">
+      <button id="ge-delete" class="btn ghost small" style="color: var(--danger); border-color: var(--line-2);" onclick="if(editingGuideId){deleteGuide(editingGuideId);closeGuideEditor();}">삭제</button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn ghost small" onclick="closeGuideEditor()">취소</button>
+        <button class="btn small" onclick="saveGuideFromEditor()">저장</button>
       </div>
     </div>
   </div>
@@ -2283,9 +2561,10 @@ const SAMPLE_PI = {
 /* 사용자 정의 분석 규칙 */
 let customRules = [];
 let editingRuleId = null;
+let editingBuiltinNum = null;  // 기본 규칙 편집 중인 번호 ('01'~'12'), null이면 사용자규칙 모드
 
 /* 화면 표시용 기본 규칙 메타데이터 (실제 규칙 로직은 ruleBasedDiagnosis + buildPrompt에 정의되어 있음) */
-const BUILTIN_RULES = [
+let BUILTIN_RULES = [
   { num: '01', name: '참여기간 일자 누락',     desc: 'YYYY.MM ~ YYYY.MM 형태로 일자 없이 기재된 경우, 협회 산정시 시작월은 말일부터, 종료월은 1일까지로 인정되어 양쪽에서 일수가 잘려나갑니다. (사례집 본문에는 명시 조항 없음 — 협회 운영지침 기준)', severity: '높음' },
   { num: '02', name: '발주자 공란',           desc: '발주자 항목이 공란/미상/기타/하이픈인 경우 경력 성격·공사종류·수행업무 판단에 영향을 주므로 경정신고 검토를 권고합니다.', severity: '보통~높음' },
   { num: '03', name: '공사종류 공란',          desc: '공사종류가 공란인 경우 프로젝트명·담당업무 키워드를 근거로 공사종류를 추정하고 보완 검토를 권고합니다.', severity: '보통~높음' },
@@ -2299,6 +2578,9 @@ const BUILTIN_RULES = [
   { num: '11', name: '직무분야/전문분야 공란',  desc: '직무분야 또는 전문분야가 공란인 경우 사례집 Ⅳ에 따라 업체 보유 건설업 또는 담당업무 기준으로 경정을 권고합니다.', severity: '보통~높음' },
   { num: '12', name: '경력확인서 발급일 마감',  desc: '참여기간 종료일이 경력확인서 발급일과 7일 이내로 동일한 경우 사례집 Ⅱ-5에 따라 "근무중"으로 표기 또는 실제 종료일로 경정 검토를 권고합니다.', severity: '높음' }
 ];
+
+/* 기본 규칙 원본 (사용자가 편집 후 '기본값 복원'에 사용) */
+const BUILTIN_RULES_DEFAULT = JSON.parse(JSON.stringify(BUILTIN_RULES));
 
 /* ============================================================
    SAMPLE DATA — 명세서의 모든 Rule을 시연
@@ -3601,8 +3883,10 @@ function severityClass(sev) {
 }
 
 function renderRulesPanel() {
-  // 기본 12개 규칙 HTML 생성
-  const builtinHtml = BUILTIN_RULES.map(r => `
+  const admin = (typeof isAdmin === 'function') && isAdmin();
+
+  // ── 기본 규칙: 관리자용(편집버튼) / 사용자용(보기전용) ──
+  const builtinAdminHtml = BUILTIN_RULES.map(r => `
     <div class="rule-item">
       <div class="rule-num">${r.num}</div>
       <div class="rule-body">
@@ -3610,21 +3894,80 @@ function renderRulesPanel() {
         <div class="rule-desc">${esc(r.desc)}</div>
       </div>
       <div class="rule-severity ${severityClass(r.severity)}">${esc(r.severity)}</div>
-      <div class="rule-actions" style="font-size: 11px; color: var(--muted);">기본 규칙</div>
+      <div class="rule-actions">
+        <button onclick="openBuiltinRuleEditor('${r.num}')">편집</button>
+      </div>
     </div>
   `).join('');
 
-  // 입력 화면의 기존 리스트 (있으면 채움)
+  const builtinViewHtml = BUILTIN_RULES.map(r => `
+    <div class="rule-item">
+      <div class="rule-num">${r.num}</div>
+      <div class="rule-body">
+        <div class="rule-name">${esc(r.name)}</div>
+        <div class="rule-desc">${esc(r.desc)}</div>
+      </div>
+      <div class="rule-severity ${severityClass(r.severity)}">${esc(r.severity)}</div>
+    </div>
+  `).join('');
+
+  // 관리자 전용 기본규칙 리스트
+  const adminRulesList = document.getElementById('admin-rules-list');
+  if (adminRulesList) {
+    // 관리자 화면에는 기본규칙 + 사용자정의 규칙을 모두 편집 가능하게 표시
+    const customAdmin = customRules.length === 0
+      ? ''
+      : '<div style="margin-top:18px; font-size:12px; color:var(--muted); font-weight:700;">사용자 정의 규칙</div>' +
+        customRules.map((r, i) => `
+          <div class="rule-item ${r.enabled ? '' : 'disabled'}">
+            <div class="rule-num">${String(13 + i).padStart(2, '0')}</div>
+            <div class="rule-body">
+              <div class="rule-name">${esc(r.name)}</div>
+              <div class="rule-desc">${esc(r.description)}</div>
+            </div>
+            <div class="rule-severity ${severityClass(r.severity)}">${esc(r.severity || '높음')}</div>
+            <div class="rule-actions">
+              <button class="rule-toggle ${r.enabled ? 'on' : ''}" onclick="toggleCustomRule('${r.id}')" title="활성/비활성 전환"></button>
+              <button onclick="openRuleEditor('${r.id}')">편집</button>
+              <button class="danger" onclick="deleteCustomRule('${r.id}')">삭제</button>
+            </div>
+          </div>`).join('');
+    adminRulesList.innerHTML = builtinAdminHtml + customAdmin;
+  }
+
+  // 입력 화면의 기존 리스트 — 관리자만 편집버튼, 아니면 보기전용
   const builtinList = document.getElementById('builtin-rules-list');
-  if (builtinList) builtinList.innerHTML = builtinHtml;
+  if (builtinList) builtinList.innerHTML = admin ? builtinAdminHtml : builtinViewHtml;
 
-  // 규칙 가이드 페이지의 새 리스트 (있으면 채움)
+  // ── 진단 가이드 페이지(사용자 보기 전용) ──
+  // 사용자에게는 진단 가이드(DIAG_GUIDES)를 보기 전용으로 표시.
   const builtinDetail = document.getElementById('rules-detail-list');
-  if (builtinDetail) builtinDetail.innerHTML = builtinHtml;
+  if (builtinDetail) {
+    const guides = [...DIAG_GUIDES].filter(g => g.visible).sort((a, b) => a.order - b.order);
+    if (admin) {
+      // 관리자가 사용자 화면을 볼 때도 규칙은 편집 가능하게(편의)
+      builtinDetail.innerHTML = builtinAdminHtml;
+    } else if (guides.length) {
+      // 일반 사용자: 보기 전용 가이드 카드 (버튼 없음)
+      builtinDetail.innerHTML = guides.map(g => `
+        <div class="rule-item">
+          <div class="rule-num">${g.order}</div>
+          <div class="rule-body">
+            <div class="rule-name">${esc(g.title)}</div>
+            <div class="rule-desc">${esc(g.desc)}</div>
+            ${g.example ? `<div class="rule-desc" style="margin-top:4px;"><strong>적용 사례:</strong> ${esc(g.example)}</div>` : ''}
+            ${g.notice ? `<div class="rule-desc" style="margin-top:4px; color:var(--danger);"><strong>주의사항:</strong> ${esc(g.notice)}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+    } else {
+      builtinDetail.innerHTML = builtinViewHtml;
+    }
+  }
 
-  // 사용자 정의 규칙 HTML 생성
+  // ── 사용자 정의 규칙(입력 화면) — 관리자만 편집 가능 ──
   const customHtml = customRules.length === 0
-    ? `<div class="empty-rules">등록된 사용자 정의 규칙이 없습니다. <strong style="color: var(--ink);">"+ 규칙 추가"</strong>를 눌러 분석 기준을 추가하면 AI 분석에 함께 반영됩니다.</div>`
+    ? `<div class="empty-rules">등록된 사용자 정의 규칙이 없습니다.${admin ? ' <strong style="color: var(--ink);">"+ 규칙 추가"</strong>를 눌러 분석 기준을 추가하면 AI 분석에 함께 반영됩니다.' : ''}</div>`
     : customRules.map((r, i) => `
       <div class="rule-item ${r.enabled ? '' : 'disabled'}">
         <div class="rule-num">${String(13 + i).padStart(2, '0')}</div>
@@ -3633,25 +3976,28 @@ function renderRulesPanel() {
           <div class="rule-desc">${esc(r.description)}</div>
         </div>
         <div class="rule-severity ${severityClass(r.severity)}">${esc(r.severity || '높음')}</div>
-        <div class="rule-actions">
+        ${admin ? `<div class="rule-actions">
           <button class="rule-toggle ${r.enabled ? 'on' : ''}" onclick="toggleCustomRule('${r.id}')" title="활성/비활성 전환"></button>
           <button onclick="openRuleEditor('${r.id}')">편집</button>
           <button class="danger" onclick="deleteCustomRule('${r.id}')">삭제</button>
-        </div>
+        </div>` : ''}
       </div>
     `).join('');
 
-  // 입력 화면의 기존 사용자 규칙 리스트
   const customList = document.getElementById('custom-rules-list');
   const customCount = document.getElementById('custom-rules-count');
   if (customList) customList.innerHTML = customHtml;
   if (customCount) customCount.textContent = `${customRules.length}건`;
 
-  // 규칙 가이드 페이지의 새 사용자 규칙 리스트
   const customListPage = document.getElementById('custom-rules-list-page');
   const customCountPage = document.getElementById('custom-rules-count-page');
   if (customListPage) customListPage.innerHTML = customHtml;
   if (customCountPage) customCountPage.textContent = `${customRules.length}건`;
+
+  // 사용자 화면의 "+ 규칙 추가" 버튼들 — 관리자가 아니면 숨김
+  document.querySelectorAll('.rules-admin-only').forEach(el => {
+    el.style.display = admin ? '' : 'none';
+  });
 }
 
 function toggleCustomRule(id) {
@@ -3670,14 +4016,43 @@ function deleteCustomRule(id) {
   toast('규칙이 삭제되었습니다.');
 }
 
+function openBuiltinRuleEditor(num) {
+  if (typeof isAdmin === 'function' && !isAdmin()) { toast('관리자만 규칙을 편집할 수 있습니다.'); return; }
+  const r = BUILTIN_RULES.find(x => x.num === num);
+  if (!r) return;
+  editingRuleId = null;
+  editingBuiltinNum = num;
+
+  document.getElementById('rule-editor-title').textContent = `기본 규칙 ${num} 편집`;
+  document.getElementById('re-name').value = r.name;
+  document.getElementById('re-desc').value = r.desc;
+  document.getElementById('re-severity').value = r.severity;
+  const docsField = document.getElementById('re-docs');
+  if (docsField) { docsField.value = ''; docsField.closest('.re-field').style.display = 'none'; }
+
+  // 삭제 버튼 → '기본값 복원'으로 전환
+  const deleteBtn = document.getElementById('re-delete');
+  deleteBtn.textContent = '기본값 복원';
+  deleteBtn.style.display = '';
+
+  document.getElementById('rule-editor-modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('re-name').focus(), 100);
+}
+
 function openRuleEditor(id) {
   editingRuleId = id;
+  editingBuiltinNum = null;
   const title = document.getElementById('rule-editor-title');
   const nameInput = document.getElementById('re-name');
   const descInput = document.getElementById('re-desc');
   const sevInput = document.getElementById('re-severity');
   const docsInput = document.getElementById('re-docs');
   const deleteBtn = document.getElementById('re-delete');
+
+  // 사용자규칙 모드: 증빙 필드 다시 표시, 삭제 버튼 라벨 복원
+  if (docsInput) docsInput.closest('.re-field').style.display = '';
+  deleteBtn.textContent = '삭제';
 
   if (id) {
     const r = customRules.find(r => r.id === id);
@@ -3706,6 +4081,7 @@ function closeRuleEditor() {
   document.getElementById('rule-editor-modal').classList.remove('show');
   document.body.style.overflow = '';
   editingRuleId = null;
+  editingBuiltinNum = null;
 }
 
 function saveRuleFromEditor() {
@@ -3716,6 +4092,16 @@ function saveRuleFromEditor() {
 
   if (!name) { toast('규칙 이름을 입력해 주세요.'); return; }
   if (!description) { toast('감지 기준 / 권고 내용을 입력해 주세요.'); return; }
+
+  // 기본 규칙 편집 모드
+  if (editingBuiltinNum) {
+    const r = BUILTIN_RULES.find(x => x.num === editingBuiltinNum);
+    if (r) { r.name = name; r.desc = description; r.severity = severity; }
+    renderRulesPanel();
+    closeRuleEditor();
+    toast(`기본 규칙 ${editingBuiltinNum}이(가) 수정되었습니다.`);
+    return;
+  }
 
   if (editingRuleId) {
     const r = customRules.find(r => r.id === editingRuleId);
@@ -3732,6 +4118,16 @@ function saveRuleFromEditor() {
 }
 
 function deleteRuleFromEditor() {
+  // 기본 규칙 편집 모드: 삭제 대신 기본값 복원
+  if (editingBuiltinNum) {
+    const def = BUILTIN_RULES_DEFAULT.find(x => x.num === editingBuiltinNum);
+    const r = BUILTIN_RULES.find(x => x.num === editingBuiltinNum);
+    if (def && r) { r.name = def.name; r.desc = def.desc; r.severity = def.severity; }
+    renderRulesPanel();
+    closeRuleEditor();
+    toast(`기본 규칙 ${editingBuiltinNum}이(가) 기본값으로 복원되었습니다.`);
+    return;
+  }
   if (!editingRuleId) return;
   const r = customRules.find(r => r.id === editingRuleId);
   if (!r) return;
@@ -5160,8 +5556,18 @@ function buildPrompt(p, pre) {
   const customRulesText = activeCustom.length > 0
     ? '\n\n[사용자 정의 추가 규칙]\n위 1~5번 외에 다음 규칙도 함께 검토하세요. 해당 규칙에 부합하는 경우 오류_의심항목에 규칙 이름을 그대로 사용하여 추가하세요.\n' +
       activeCustom.map((r, i) =>
-        `${6 + i}) ${r.name}: ${r.description}${r.severity ? ` (권장 위험도: ${r.severity})` : ''}${r.docs ? ` (관련 증빙: ${r.docs})` : ''}`
+        `${6 + i}) ${r.name}: ${r.description}${r.severity ? ` (권장 필요도: ${r.severity})` : ''}${r.docs ? ` (관련 증빙: ${r.docs})` : ''}`
       ).join('\n')
+    : '';
+
+  // 사용자가 기본 규칙을 수정했으면 그 내용을 보강 지침으로 추가 전달
+  const editedBuiltin = BUILTIN_RULES.filter(r => {
+    const d = BUILTIN_RULES_DEFAULT.find(x => x.num === r.num);
+    return d && (d.name !== r.name || d.desc !== r.desc || d.severity !== r.severity);
+  });
+  const editedBuiltinText = editedBuiltin.length > 0
+    ? '\n\n[기본 규칙 보정 지침]\n다음 기본 규칙은 검토자가 기준을 수정했습니다. 아래 수정된 설명·필요도를 우선 적용하세요.\n' +
+      editedBuiltin.map(r => `- ${r.name}: ${r.desc} (필요도: ${r.severity})`).join('\n')
     : '';
 
   return `당신은 한국건설기술인협회 경력관리 기준에 정통한 건설기술인 경력증명서 검토 전문가입니다.
@@ -5173,7 +5579,7 @@ function buildPrompt(p, pre) {
 3) 공사종류가 공란인 경우, 프로젝트명/담당업무 키워드를 근거로 공사종류를 추정하고 보완 검토를 권고합니다.
 4) 담당업무가 '소장/부장/이사/차장/사무/행정/기타/관리/현장관리' 등 직책 또는 포괄 표현으로 기재된 경우, '시공관리·공사관리·품질관리·안전관리·감리·건설사업관리' 등 실질 업무 기준 경정을 권고합니다.
 5) 담당업무가 '감독'으로 기재되어 있으나 근무처가 발주자/발주청 소속이 아닌 민간 시공사/감리사/CM사/엔지니어링사/설계사인 경우, 매우 높은 위험으로 판정하고 실제 수행업무 기준 경정을 권고합니다.
-6) ★중요★ 프로젝트명(참여사업명)이 '본사' 또는 '본사/감리부' 등 '본사'로 시작하는 경우는 본사 근무 경력입니다. 본사 근무는 발주자·공사종류·전문분야·담당업무가 공란인 것이 정상이며 경정이 필요 없습니다. 이 경우 반드시 "경정_필요도"를 "낮음"으로 판정하고, 공란을 오류로 지적하지 마세요.${customRulesText}
+6) ★중요★ 프로젝트명(참여사업명)이 '본사' 또는 '본사/감리부' 등 '본사'로 시작하는 경우는 본사 근무 경력입니다. 본사 근무는 발주자·공사종류·전문분야·담당업무가 공란인 것이 정상이며 경정이 필요 없습니다. 이 경우 반드시 "경정_필요도"를 "낮음"으로 판정하고, 공란을 오류로 지적하지 마세요.${customRulesText}${editedBuiltinText}
 
 [응답 형식]
 순수 JSON 객체 하나만 출력하세요. 마크다운 코드펜스, 설명, 머리말, 끝맺음 문장 없이 JSON만 출력해야 합니다.
@@ -5210,7 +5616,7 @@ function buildPrompt(p, pre) {
 
 [규칙 기반 사전 진단 참고]
 오류 의심: ${pre.errors.join(', ') || '없음'}
-사전 추정 위험도: ${pre.risk}`;
+사전 추정 필요도: ${pre.risk}`;
 }
 
 async function callClaude(apiKey, prompt) {
@@ -5251,8 +5657,16 @@ function buildBatchPrompt(batch, batchPre) {
   const customRulesText = activeCustom.length > 0
     ? '\n[추가 규칙]\n' +
       activeCustom.map((r, i) =>
-        `${6 + i}) ${r.name}: ${r.description}${r.severity ? ` (위험도: ${r.severity})` : ''}`
+        `${6 + i}) ${r.name}: ${r.description}${r.severity ? ` (필요도: ${r.severity})` : ''}`
       ).join('\n')
+    : '';
+
+  const _editedBuiltin = BUILTIN_RULES.filter(r => {
+    const d = BUILTIN_RULES_DEFAULT.find(x => x.num === r.num);
+    return d && (d.name !== r.name || d.desc !== r.desc || d.severity !== r.severity);
+  });
+  const editedBuiltinText = _editedBuiltin.length > 0
+    ? '\n[기본 규칙 보정]\n' + _editedBuiltin.map(r => `- ${r.name}: ${r.desc} (필요도: ${r.severity})`).join('\n')
     : '';
 
   const items = batch.map((p, i) => {
@@ -5269,7 +5683,7 @@ function buildBatchPrompt(batch, batchPre) {
 담당업무: ${p.duty || '(공란)'}
 실제업무: ${p.actual || '(미입력)'}
 사전 오류 의심: ${pre.errors.join(', ') || '없음'}
-사전 위험도: ${pre.risk}`;
+사전 필요도: ${pre.risk}`;
   }).join('\n\n');
 
   return `당신은 한국건설기술인협회 경력관리 기준에 정통한 검토 전문가입니다.
@@ -5281,7 +5695,7 @@ function buildBatchPrompt(batch, batchPre) {
 3) 공사종류 공란 → 추정·보완 검토 권고.
 4) 담당업무가 직책(소장/부장/이사 등) → 실질 업무(시공관리/공사관리/품질관리/안전관리/감리/CM)로 경정.
 5) 담당업무 '감독' + 민간 소속(시공/감리/CM/엔지니어링/설계) → 매우 높은 위험, 실 업무 기준 경정.
-6) ★중요★ 프로젝트명이 '본사' 또는 '본사/XXX'로 시작 → 본사 근무. 발주자·공사종류·전문분야·담당업무 공란이 정상. 경정_필요도 반드시 "낮음", 공란을 오류로 지적 금지.${customRulesText}
+6) ★중요★ 프로젝트명이 '본사' 또는 '본사/XXX'로 시작 → 본사 근무. 발주자·공사종류·전문분야·담당업무 공란이 정상. 경정_필요도 반드시 "낮음", 공란을 오류로 지적 금지.${customRulesText}${editedBuiltinText}
 
 [응답 형식]
 순수 JSON 배열만. 코드펜스 금지. 정확히 ${batch.length}개:
@@ -5665,7 +6079,7 @@ function renderResults() {
       <div class="val">${results.length}<span class="unit">건</span></div>
     </div>
     <div class="stat danger">
-      <div class="lbl">매우높음 위험</div>
+      <div class="lbl">매우높음 필요</div>
       <div class="val">${counts['매우높음']||0}<span class="unit">건</span></div>
     </div>
     <div class="stat warn">
@@ -5745,7 +6159,7 @@ function renderResultList() {
     });
 
   if (items.length === 0) {
-    wrap.innerHTML = '<div style="padding: 60px; text-align: center; color: var(--muted); border: 1px dashed var(--line);">해당 위험도의 프로젝트가 없습니다.</div>';
+    wrap.innerHTML = '<div style="padding: 60px; text-align: center; color: var(--muted); border: 1px dashed var(--line);">해당 필요도의 프로젝트가 없습니다.</div>';
     updateDeleteFilteredBtn();
     return;
   }
@@ -6012,8 +6426,8 @@ function renderReport() {
       <h2><span class="n">02</span>전체 진단 요약</h2>
       <div class="r-summary-grid">
         <div class="r-stat"><div class="lbl">총 검토 건수</div><div class="val">${results.length} 건</div></div>
-        <div class="r-stat"><div class="lbl">매우높음 위험</div><div class="val" style="color: var(--danger);">${counts['매우높음']||0} 건</div></div>
-        <div class="r-stat"><div class="lbl">높음 위험</div><div class="val" style="color: var(--accent);">${counts['높음']||0} 건</div></div>
+        <div class="r-stat"><div class="lbl">매우높음 필요</div><div class="val" style="color: var(--danger);">${counts['매우높음']||0} 건</div></div>
+        <div class="r-stat"><div class="lbl">높음 필요</div><div class="val" style="color: var(--accent);">${counts['높음']||0} 건</div></div>
         <div class="r-stat"><div class="lbl">경정 검토 권고</div><div class="val">${needs.length} 건</div></div>
       </div>
     </div>
@@ -6065,6 +6479,9 @@ function renderReport() {
 let _currentView = 'view-input';
 
 function goView(id, fromPopstate) {
+  // 관리자 페이지 접근 가드 (권한 없으면 접근 거부 화면으로)
+  id = guardAdminView(id);
+
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const target = document.getElementById(id);
   if (!target) return;
@@ -6079,6 +6496,7 @@ function goView(id, fromPopstate) {
 
   // 진입 시 자동 렌더링
   if (id === 'view-rules') renderRulesPanel();
+  if (id === 'view-admin') renderAdmin();
 
   // 네비게이션 상태 갱신 + 모바일 메뉴 닫기
   updateNavActive(id);
@@ -6102,22 +6520,332 @@ window.addEventListener('DOMContentLoaded', function() {
   try { history.replaceState({ view: 'view-input' }, '', '#view-input'); } catch(e) {}
   renderNav();
   updateNavActive('view-input');
+  updateAuthUI();
 });
 
 /* ============================================================
-   상단 네비게이션 (확장형 구조)
-   - 메뉴 추가: NAV_CONFIG 배열에 항목 1개만 추가하면 데스크톱/모바일 모두 자동 반영
-   - view: 대메뉴 클릭 시 이동할 화면 id (없으면 클릭 비활성)
-   - views: 해당 메뉴가 'active'로 표시될 화면 id 목록
-   - children: 소메뉴 [{ label, onclick }]
-   - badge: 라벨 옆 작은 표식 (예: '예정')
+   인증 / 권한 (AUTH) — 데모 구현
+   ────────────────────────────────────────────────────────────
+   ⚠ 보안 주의 (서버 연동 시 반드시 교체):
+   - 아래 권한 체크는 클라이언트 상태(authState)만 검사하므로
+     개발자도구로 우회 가능 → "데모/UX" 수준입니다.
+   - 실제 서비스에서는:
+     1) 소셜 로그인을 서버 OAuth 콜백으로 처리하고 JWT/세션 발급
+     2) 관리자 화면 진입·규칙 변경 API 호출 시 서버에서 토큰의
+        role을 검증 (requireAdminServerSide)
+     3) 비회원 정책(guestPolicy)도 서버 설정값을 신뢰
+   - 교체 지점은 [SERVER] 주석으로 표시했습니다.
    ============================================================ */
+const ROLE = { GUEST: 'guest', MEMBER: 'member', ADMIN: 'admin' };
+
+const authState = {
+  loggedIn: false,
+  role: ROLE.GUEST,          // guest | member | admin
+  email: null,
+  provider: null,            // google | kakao | naver | guest
+  // 로그인 게이트 통과 후 이동할 목적지(액션)
+  pendingAction: null
+};
+
+// 서비스 정책 (향후 관리자가 변경) — [SERVER] 실제로는 서버 설정에서 로드
+const servicePolicy = {
+  guestAllowed: true         // false면 비회원 분석 차단
+};
+
+/* [SERVER] 실제 환경에서는 이 함수가 서버에 토큰을 보내 role을 검증해야 함.
+   데모에서는 클라이언트 authState만 확인. */
+function isAdmin() { return authState.loggedIn && authState.role === ROLE.ADMIN; }
+function isMember() { return authState.loggedIn && (authState.role === ROLE.MEMBER || authState.role === ROLE.ADMIN); }
+
+/* 소셜 로그인 (데모) — 실제로는 OAuth 리다이렉트 */
+function socialLogin(provider) {
+  // [SERVER] window.location = '/auth/' + provider; 형태로 서버 OAuth 시작
+  // 데모: 즉시 일반회원으로 로그인 처리.
+  // 관리자 데모 체험용: 이메일에 'admin'이 들어가면 관리자로 (실서비스에선 서버가 결정)
+  authState.loggedIn = true;
+  authState.provider = provider;
+  authState.email = provider + '-user@example.com';
+  authState.role = ROLE.MEMBER;
+  afterLogin();
+  toast(`${providerLabel(provider)} 계정으로 로그인되었습니다. (데모)`, 4000);
+}
+
+function providerLabel(p) {
+  return ({ google: 'Google', kakao: '카카오', naver: '네이버', guest: '비회원' })[p] || p;
+}
+
+/* 비회원 시작 */
+function guestStart() {
+  if (!servicePolicy.guestAllowed) {
+    toast('현재 비회원 이용이 제한되어 있습니다. 로그인 후 이용해 주세요.', 5000);
+    return;
+  }
+  authState.loggedIn = false;
+  authState.role = ROLE.GUEST;
+  authState.provider = 'guest';
+  authState.email = null;
+  afterLogin();
+  toast('비회원으로 분석을 시작합니다. 분석 이력은 저장되지 않습니다.', 5000);
+}
+
+/* 로그인/게이트 통과 후 처리 */
+function afterLogin() {
+  renderNav();                 // 권한 따라 메뉴(관리자) 갱신
+  updateAuthUI();
+  const action = authState.pendingAction;
+  authState.pendingAction = null;
+  goView('view-input');
+  if (typeof action === 'function') {
+    setTimeout(action, 200);   // 화면 전환 후 원래 의도(업로드 등) 실행
+  }
+}
+
+/* 로그아웃 (데모) */
+function logout() {
+  authState.loggedIn = false;
+  authState.role = ROLE.GUEST;
+  authState.email = null;
+  authState.provider = null;
+  renderNav();
+  updateAuthUI();
+  goView('view-input');
+  toast('로그아웃되었습니다.');
+}
+
+/* 데모 전용: 관리자 권한으로 전환 (서버 연동 전 테스트용) */
+function demoBecomeAdmin() {
+  authState.loggedIn = true;
+  authState.role = ROLE.ADMIN;
+  authState.provider = authState.provider || 'google';
+  authState.email = authState.email || 'admin@example.com';
+  renderNav();
+  updateAuthUI();
+  toast('관리자 권한으로 전환되었습니다. (데모 전용)', 4000);
+}
+
+/* 업로드 등 보호된 액션 진입점: 로그인 게이트 */
+function requireAuthThen(action) {
+  // 이미 회원이거나, 비회원 허용 정책이면 게이트 없이 진행 가능.
+  // 단, "최초 진입"을 로그인 페이지로 보내려면 loggedIn=false & 비회원이 아직 시작 안 한 경우 게이트.
+  if (authState.loggedIn || authState.provider === 'guest') {
+    if (typeof action === 'function') action();
+    return;
+  }
+  // 로그인 게이트로 보내고, 통과 후 원래 액션 실행
+  authState.pendingAction = action || null;
+  // 비회원 정책에 따라 게이트 하단 버튼 잠금 표시
+  const note = document.getElementById('guest-locked-note');
+  const gbtn = document.getElementById('guest-start-btn');
+  if (note && gbtn) {
+    if (servicePolicy.guestAllowed) { note.style.display = 'none'; gbtn.style.opacity = '1'; gbtn.disabled = false; }
+    else { note.style.display = 'block'; gbtn.style.opacity = '0.5'; gbtn.disabled = true; }
+  }
+  goView('view-login');
+}
+
+/* 관리자 페이지 진입 가드 — goView에서 호출 */
+function guardAdminView(id) {
+  if (id === 'view-admin' && !isAdmin()) {
+    // [SERVER] 실제로는 서버가 403 응답 → 이 분기 자체가 서버에서 막혀야 함
+    return 'view-denied';
+  }
+  return id;
+}
+
+/* 비회원 이용 정책 변경 (관리자) */
+function setGuestPolicy(allowed) {
+  servicePolicy.guestAllowed = !!allowed;
+  // [SERVER] 실제로는 서버에 정책 저장 PATCH 요청
+  toast(allowed ? '비회원 이용을 허용했습니다.' : '비회원 이용을 제한했습니다. (다음 진입부터 적용)', 4000);
+}
+
+/* 헤더 우측 로그인 상태 UI 갱신 */
+function updateAuthUI() {
+  const el = document.getElementById('auth-status');
+  if (!el) return;
+  if (isAdmin()) {
+    el.innerHTML = `<span class="role-badge role-admin">관리자</span> <button class="nav-link" style="padding:6px 10px;" onclick="logout()">로그아웃</button>`;
+  } else if (isMember()) {
+    el.innerHTML = `<span class="role-badge role-member">회원</span> <button class="nav-link" style="padding:6px 10px;" onclick="logout()">로그아웃</button>`;
+  } else if (authState.provider === 'guest') {
+    el.innerHTML = `<span class="role-badge role-guest">비회원</span> <button class="nav-link" style="padding:6px 10px;" onclick="goView('view-login')">로그인</button>`;
+  } else {
+    el.innerHTML = `<button class="nav-link" style="padding:6px 10px;" onclick="goView('view-login')">로그인</button>`;
+  }
+}
+
+/* ============================================================
+   진단 가이드 데이터 (사용자 보기 전용 / 관리자 편집)
+   ============================================================ */
+let DIAG_GUIDES = [
+  {
+    id: 'g1', title: '참여기간 일수 누락', order: 1, visible: true,
+    desc: '참여기간에 일자가 누락된 경우 경력 인정일수 산정에 오류가 발생할 수 있습니다.',
+    example: '시작일 또는 종료일이 월까지만 기재된 경우',
+    notice: '협회 경정신고 대상 여부를 확인해야 합니다.',
+    relatedRule: '01 참여기간 일자 누락'
+  },
+  {
+    id: 'g2', title: '발주자 공란', order: 2, visible: true,
+    desc: '발주자 항목이 비어 있으면 경력의 성격·공사종류 판단이 어려워 경정 검토가 필요합니다.',
+    example: '발주자 칸이 공란/미상/기타로 기재된 경우',
+    notice: '발주처 확인 서류를 준비하면 경정에 유리합니다.',
+    relatedRule: '02 발주자 공란'
+  },
+  {
+    id: 'g3', title: '담당업무 부적합', order: 3, visible: true,
+    desc: '담당업무가 직책(소장·부장 등)으로 기재되면 실질 업무 기준으로 경정이 필요할 수 있습니다.',
+    example: '담당업무에 "현장소장"만 기재된 경우',
+    notice: '실제 수행 업무(시공·감리 등)를 입증할 자료가 필요합니다.',
+    relatedRule: '04 담당업무 직책화'
+  }
+];
+let editingGuideId = null;
+
+/* 데모 회원/이력 데이터 — [SERVER] 실제로는 API에서 fetch */
+const DEMO_MEMBERS = [
+  { email: 'kim@example.com', provider: 'google', role: 'member', joined: '2026.04.12' },
+  { email: 'lee@example.com', provider: 'kakao', role: 'member', joined: '2026.05.02' },
+  { email: 'admin@example.com', provider: 'naver', role: 'admin', joined: '2026.03.01' }
+];
+const DEMO_HISTORY = [
+  { at: '2026.05.30 11:02', user: 'kim@example.com', projects: 61, need: 34 },
+  { at: '2026.05.29 16:40', user: '비회원', projects: 12, need: 5 },
+  { at: '2026.05.28 09:15', user: 'lee@example.com', projects: 23, need: 9 }
+];
+
+/* ============================================================
+   관리자 화면 렌더링
+   ============================================================ */
+function switchAdminPanel(name) {
+  document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('apanel-' + name);
+  if (panel) panel.classList.add('active');
+  document.querySelectorAll('.admin-nav-item').forEach(b =>
+    b.classList.toggle('active', b.getAttribute('data-apanel') === name));
+}
+
+function renderAdmin() {
+  if (!isAdmin()) return;  // [SERVER] 서버에서도 재검증
+  // 통계
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('astat-rules', BUILTIN_RULES.length + customRules.length);
+  set('astat-guide', DIAG_GUIDES.length);
+  set('astat-members', DEMO_MEMBERS.length);
+  set('astat-history', DEMO_HISTORY.length);
+
+  // 기본 규칙 관리: 기존 renderRulesPanel이 admin-rules-list도 채우도록 연동
+  renderRulesPanel();
+  renderAdminGuideList();
+
+  // 회원
+  const mb = document.getElementById('admin-members-body');
+  if (mb) mb.innerHTML = DEMO_MEMBERS.map(m =>
+    `<tr><td>${esc(m.email)}</td><td>${providerLabel(m.provider)}</td>` +
+    `<td><span class="role-badge role-${m.role}">${m.role === 'admin' ? '관리자' : '회원'}</span></td>` +
+    `<td>${esc(m.joined)}</td></tr>`).join('');
+
+  // 이력
+  const hb = document.getElementById('admin-history-body');
+  if (hb) hb.innerHTML = DEMO_HISTORY.map(h =>
+    `<tr><td>${esc(h.at)}</td><td>${esc(h.user)}</td><td>${h.projects}건</td><td>${h.need}건</td></tr>`).join('');
+
+  // 비회원 정책 체크박스 동기화
+  const ga = document.getElementById('admin-guest-allow');
+  if (ga) ga.checked = servicePolicy.guestAllowed;
+}
+
+function renderAdminGuideList() {
+  const wrap = document.getElementById('admin-guide-list');
+  if (!wrap) return;
+  const sorted = [...DIAG_GUIDES].sort((a, b) => a.order - b.order);
+  wrap.innerHTML = sorted.map(g => `
+    <div class="rule-item ${g.visible ? '' : 'disabled'}">
+      <div class="rule-num">${g.order}</div>
+      <div class="rule-body">
+        <div class="rule-name">${esc(g.title)} ${g.visible ? '' : '<span style="font-size:11px;color:var(--muted);">(숨김)</span>'}</div>
+        <div class="rule-desc">${esc(g.desc)}</div>
+      </div>
+      <div class="rule-actions">
+        <button onclick="toggleGuideVisible('${g.id}')">${g.visible ? '숨기기' : '노출'}</button>
+        <button onclick="openGuideEditor('${g.id}')">편집</button>
+        <button class="danger" onclick="deleteGuide('${g.id}')">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleGuideVisible(id) {
+  if (!isAdmin()) return;
+  const g = DIAG_GUIDES.find(x => x.id === id);
+  if (g) { g.visible = !g.visible; renderAdminGuideList(); renderRulesPanel(); }
+}
+
+function deleteGuide(id) {
+  if (!isAdmin()) return;
+  const g = DIAG_GUIDES.find(x => x.id === id);
+  if (!g) return;
+  if (!confirm(`진단 가이드 "${g.title}"을(를) 삭제합니다. 계속하시겠습니까?`)) return;
+  DIAG_GUIDES = DIAG_GUIDES.filter(x => x.id !== id);
+  renderAdminGuideList(); renderRulesPanel();
+  toast('가이드가 삭제되었습니다.');
+}
+
+function openGuideEditor(id) {
+  if (!isAdmin()) { toast('관리자만 편집할 수 있습니다.'); return; }
+  editingGuideId = id;
+  const g = id ? DIAG_GUIDES.find(x => x.id === id) : null;
+  document.getElementById('ge-title').value = g ? g.title : '';
+  document.getElementById('ge-desc').value = g ? g.desc : '';
+  document.getElementById('ge-example').value = g ? g.example : '';
+  document.getElementById('ge-notice').value = g ? g.notice : '';
+  document.getElementById('ge-related').value = g ? (g.relatedRule || '') : '';
+  document.getElementById('ge-order').value = g ? g.order : (DIAG_GUIDES.length + 1);
+  document.getElementById('ge-visible').checked = g ? g.visible : true;
+  document.getElementById('guide-editor-title').textContent = id ? '진단 가이드 편집' : '진단 가이드 추가';
+  document.getElementById('ge-delete').style.display = id ? '' : 'none';
+  document.getElementById('guide-editor-modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeGuideEditor() {
+  document.getElementById('guide-editor-modal').classList.remove('show');
+  document.body.style.overflow = '';
+  editingGuideId = null;
+}
+
+function saveGuideFromEditor() {
+  if (!isAdmin()) return;
+  const title = document.getElementById('ge-title').value.trim();
+  const desc = document.getElementById('ge-desc').value.trim();
+  if (!title) { toast('진단 기준명을 입력해 주세요.'); return; }
+  if (!desc) { toast('설명을 입력해 주세요.'); return; }
+  const rec = {
+    title, desc,
+    example: document.getElementById('ge-example').value.trim(),
+    notice: document.getElementById('ge-notice').value.trim(),
+    relatedRule: document.getElementById('ge-related').value.trim(),
+    order: parseInt(document.getElementById('ge-order').value, 10) || (DIAG_GUIDES.length + 1),
+    visible: document.getElementById('ge-visible').checked
+  };
+  if (editingGuideId) {
+    const g = DIAG_GUIDES.find(x => x.id === editingGuideId);
+    if (g) Object.assign(g, rec);
+  } else {
+    DIAG_GUIDES.push(Object.assign({ id: 'g_' + Date.now() }, rec));
+  }
+  renderAdminGuideList(); renderRulesPanel();
+  closeGuideEditor();
+  toast(editingGuideId ? '가이드가 수정되었습니다.' : '가이드가 추가되었습니다.');
+}
+
+
 const NAV_CONFIG = [
   {
     id: 'analysis', label: '경력분석', view: 'view-input',
     views: ['view-input', 'view-analyzing', 'view-results', 'view-report'],
     children: [
-      { label: '경력증명서 업로드', onclick: "goView('view-input'); triggerFileUpload()" },
+      { label: '경력증명서 업로드', onclick: "requireAuthThen(function(){ goView('view-input'); triggerFileUpload(); })" },
       { label: '텍스트 직접 입력', onclick: "goView('view-input'); openTextInputModal()" },
       { label: '샘플로 체험하기', onclick: "goView('view-input'); loadSample()" },
       { label: '직접 입력', onclick: "goView('view-input'); addEmptyRow()" }
@@ -6128,6 +6856,17 @@ const NAV_CONFIG = [
     views: ['view-rules'],
     children: [
       { label: '규칙 가이드', onclick: "goView('view-rules')" }
+    ]
+  },
+  {
+    id: 'admin', label: '관리자', view: 'view-admin', adminOnly: true,
+    views: ['view-admin'],
+    children: [
+      { label: '대시보드', onclick: "goView('view-admin'); switchAdminPanel('dashboard')" },
+      { label: '기본 규칙 관리', onclick: "goView('view-admin'); switchAdminPanel('rules')" },
+      { label: '진단 가이드 관리', onclick: "goView('view-admin'); switchAdminPanel('guide')" },
+      { label: '회원 관리', onclick: "goView('view-admin'); switchAdminPanel('members')" },
+      { label: '분석 이력 관리', onclick: "goView('view-admin'); switchAdminPanel('history')" }
     ]
   }
   // ── 향후 확장 메뉴 (필요 시 주석 해제) ──────────────────────
@@ -6149,6 +6888,8 @@ function renderNav() {
   if (!desktop || !mobile) return;
   let d = '', m = '';
   NAV_CONFIG.forEach(item => {
+    // 관리자 전용 메뉴는 관리자 권한일 때만 렌더 (메뉴 숨김)
+    if (item.adminOnly && !isAdmin()) return;
     const hasChildren = item.children && item.children.length;
     const caret = hasChildren ? '<span class="nav-caret">▼</span>' : '';
     const badgeHtml = item.badge ? '<span class="nav-badge">' + item.badge + '</span>' : '';
@@ -6224,6 +6965,18 @@ function toast(msg, durationMs) {
 const STORAGE_KEY = 'ccap_data_v1';
 const AUTOSAVE_KEY = 'ccap_autosave_v1';
 
+/* 저장 시각을 간결하게 표시: 오늘이면 "오늘 HH:MM", 아니면 "M.D HH:MM" */
+function fmtSavedTime(ts, fallback) {
+  const t = ts || Date.parse(fallback || '');
+  if (!t || isNaN(t)) return (fallback || '알 수 없음');
+  const d = new Date(t);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const now = new Date();
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  return sameDay ? `오늘 ${hh}:${mm}` : `${d.getMonth() + 1}.${d.getDate()} ${hh}:${mm}`;
+}
+
 /* ── 임시저장 (실시간 자동) ───────────────────────────────────
    입력할 때마다 300ms 디바운스로 자동 저장.
    💾 저장 버튼과 별개 슬롯(AUTOSAVE_KEY) 사용.
@@ -6251,7 +7004,8 @@ function _doAutoSave() {
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
     const ind = document.getElementById('autosave-indicator');
     if (ind) {
-      const t = new Date().toLocaleTimeString('ko-KR');
+      const _n = new Date();
+      const t = String(_n.getHours()).padStart(2,'0') + ':' + String(_n.getMinutes()).padStart(2,'0');
       ind.textContent = '✓ 임시저장 ' + t;
       ind.style.color = 'var(--ok)';
     }
@@ -6365,7 +7119,7 @@ function updateStorageStatus() {
       el.style.color = 'var(--muted)';
     } else {
       const data = JSON.parse(raw);
-      el.textContent = `💾 마지막 저장: ${data.savedAt || '알 수 없음'} · ${(data.projects||[]).length}건`;
+      el.textContent = `💾 마지막 저장 ${fmtSavedTime(data.savedAtTime, data.savedAt)} · ${(data.projects||[]).length}건`;
       el.style.color = 'var(--ok)';
     }
   } catch(e) {
@@ -6396,7 +7150,7 @@ setTimeout(() => {
         projects = data.projects || [];
         renderEditor();
         renderPersonalInfo();
-        const t = new Date(data.savedAtTime || Date.now()).toLocaleTimeString('ko-KR');
+        const t = fmtSavedTime(data.savedAtTime, data.savedAt);
         const ind = document.getElementById('autosave-indicator');
         if (ind) { ind.textContent = '✓ 임시저장 복원됨 ' + t; ind.style.color = 'var(--ok)'; }
         // 분석 결과까지 있으면 복원 (규칙 버전 같을 때만)
