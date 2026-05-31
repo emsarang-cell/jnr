@@ -213,7 +213,7 @@
   .hero { display: block; margin-bottom: 56px; }
   .hero-main { max-width: 760px; }
   .eyebrow {
-    font-size: 11px; letter-spacing: 0.22em; color: var(--accent);
+    font-size: 13px; letter-spacing: 0.22em; color: var(--accent);
     text-transform: uppercase; margin-bottom: 18px;
     display: inline-flex; align-items: center; gap: 10px;
   }
@@ -246,7 +246,12 @@
     color: var(--accent); font-size: 13px;
   }
 
-  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .cta-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  @media (min-width: 1000px) {
+    .cta-row { flex-wrap: nowrap; }
+    .cta-row .btn { white-space: nowrap; }
+    .cta-row .btn.ghost { padding-left: 18px; padding-right: 18px; font-size: 13.5px; }
+  }
   .btn {
     padding: 14px 28px; font-size: 14px; font-weight: 600;
     border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
@@ -268,7 +273,7 @@
   }
   .feature { padding: 28px 24px; border-right: 1px solid var(--line); }
   .feature:last-child { border-right: none; }
-  .feature .num { font-family: 'Pretendard', system-ui, sans-serif; font-weight: 700; color: var(--accent); font-size: 13px; margin-bottom: 12px; letter-spacing: 0.08em; }
+  .feature .num { font-family: 'Pretendard', system-ui, sans-serif; font-weight: 700; color: var(--accent); font-size: 15px; margin-bottom: 12px; letter-spacing: 0.08em; }
   .feature h4 { font-family: 'Pretendard', system-ui, sans-serif; margin: 0 0 8px; font-size: 16px; font-weight: 700; }
   .feature p { margin: 0; font-size: 13px; color: var(--ink-2); line-height: 1.65; }
 
@@ -755,7 +760,7 @@
   .rule-list .rn { font-weight: 700; color: var(--accent); font-size: 11px; letter-spacing: 0.05em; padding-top: 3px; }
 
   /* Feature numbers */
-  .feature .num { font-weight: 700; font-size: 11px; letter-spacing: 0.18em; color: var(--accent); margin-bottom: 14px; text-transform: uppercase; }
+  .feature .num { font-weight: 700; font-size: 13px; letter-spacing: 0.18em; color: var(--accent); margin-bottom: 14px; text-transform: uppercase; }
 
   /* Report section numbers */
   .report-section h2 .n { font-weight: 700; letter-spacing: 0.05em; }
@@ -1655,7 +1660,7 @@
         <br><br>
         📖 진단 규칙 및 사용자 정의 규칙 관리는 <a href="javascript:goView('view-rules')" style="color: var(--accent); font-weight: 600;">규칙 가이드 페이지</a>에서 확인할 수 있습니다.
         <br>
-        <span style="font-size:11px; color:var(--line-2);">※ 데모: <a href="javascript:demoBecomeAdmin()" style="color:var(--line-2);">관리자 권한으로 전환</a> (서버 OAuth 연동 전 테스트용)</span>
+        <span style="font-size:11px; color:var(--muted);">🔐 <a href="javascript:openAdminLogin()" style="color:var(--accent); font-weight:600;">관리자 로그인</a></span>
       </div>
     </div>
   </section>
@@ -1757,7 +1762,8 @@
 
         <div class="auth-foot">
           로그인 시 서비스 약관 및 개인정보처리방침에 동의하게 됩니다.<br>
-          <span style="font-size:11px; color:var(--line-2);">※ 데모: 실제 인증은 서버 OAuth 연동 시 활성화됩니다.</span>
+          <span style="font-size:11px; color:var(--line-2);">※ 데모: 실제 인증은 서버 OAuth 연동 시 활성화됩니다.</span><br>
+          <a href="javascript:openAdminLogin()" style="font-size:12px; color:var(--accent); font-weight:600;">🔐 관리자 로그인</a>
         </div>
       </div>
     </div>
@@ -1810,7 +1816,27 @@
             <div class="admin-stat"><div class="lbl">회원 수</div><div class="val" id="astat-members">0</div></div>
             <div class="admin-stat"><div class="lbl">분석 이력</div><div class="val" id="astat-history">0</div></div>
           </div>
-          <div class="help">관리자 데모 화면입니다. 좌측 메뉴에서 각 관리 화면으로 이동하세요. 실제 회원/이력 데이터는 서버 연동 시 표시됩니다.</div>
+          <div class="help" style="margin-bottom:24px;">관리자 데모 화면입니다. 좌측 메뉴에서 각 관리 화면으로 이동하세요. 실제 회원/이력 데이터는 서버 연동 시 표시됩니다.</div>
+
+          <!-- 관리자 계정 변경 -->
+          <div class="panel" style="max-width:480px;">
+            <div class="panel-head"><div><h3>관리자 계정 변경</h3><div style="font-size:12px; color:var(--muted); margin-top:2px;">아이디·비밀번호를 변경합니다. (데모: 이 브라우저에 저장)</div></div></div>
+            <div style="padding:16px 4px;">
+              <div class="re-field" style="margin-bottom:12px;">
+                <label>새 아이디</label>
+                <input type="text" id="ac-id" placeholder="admin">
+              </div>
+              <div class="re-field" style="margin-bottom:12px;">
+                <label>새 비밀번호 (6자 이상)</label>
+                <input type="password" id="ac-pw" placeholder="새 비밀번호">
+              </div>
+              <div class="re-field" style="margin-bottom:16px;">
+                <label>새 비밀번호 확인</label>
+                <input type="password" id="ac-pw2" placeholder="새 비밀번호 확인">
+              </div>
+              <button class="btn small" onclick="submitAdminCredChange()">계정 정보 변경</button>
+            </div>
+          </div>
         </div>
 
         <!-- 기본 규칙 관리 -->
@@ -2146,6 +2172,40 @@
         <button class="btn ghost small" onclick="closeGuideEditor()">취소</button>
         <button class="btn small" onclick="saveGuideFromEditor()">저장</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ADMIN LOGIN MODAL ====== -->
+<div class="modal-bg" id="admin-login-modal" style="z-index: 130;" onclick="if(event.target===this)closeAdminLogin()">
+  <div class="modal" style="max-width: 400px;">
+    <div class="modal-head">
+      <div style="flex:1;">
+        <div class="eyebrow" style="margin-bottom: 8px;">🔐 관리자</div>
+        <h2 class="serif" style="font-size: 22px;">관리자 로그인</h2>
+        <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">관리자 계정으로 로그인하세요.</div>
+      </div>
+      <button class="modal-close" onclick="closeAdminLogin()">✕</button>
+    </div>
+    <div class="modal-body" style="padding: 24px 32px;">
+      <div class="re-form">
+        <div class="re-field">
+          <label>아이디</label>
+          <input type="text" id="al-id" placeholder="admin" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('al-pw').focus()">
+        </div>
+        <div class="re-field">
+          <label>비밀번호</label>
+          <input type="password" id="al-pw" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAdminLogin()">
+        </div>
+      </div>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:14px; line-height:1.6;">
+        ※ 데모 초기 계정: <strong>admin</strong> / <strong>admin1234</strong><br>
+        로그인 후 관리자 대시보드 &gt; 서비스 설정에서 계정을 변경할 수 있습니다.
+      </div>
+    </div>
+    <div style="padding: 16px 32px; background: var(--bg-2); border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn ghost small" onclick="closeAdminLogin()">취소</button>
+      <button class="btn small" onclick="submitAdminLogin()">로그인</button>
     </div>
   </div>
 </div>
@@ -3940,28 +4000,46 @@ function renderRulesPanel() {
   if (builtinList) builtinList.innerHTML = admin ? builtinAdminHtml : builtinViewHtml;
 
   // ── 진단 가이드 페이지(사용자 보기 전용) ──
-  // 사용자에게는 진단 가이드(DIAG_GUIDES)를 보기 전용으로 표시.
+  // 사용자에게는 기본 규칙 12개 전체를 보기 전용으로 표시하고,
+  // 관리자가 작성한 가이드(DIAG_GUIDES)에 동일 규칙 항목이 있으면
+  // 적용 사례·주의사항을 함께 보여준다.
   const builtinDetail = document.getElementById('rules-detail-list');
   if (builtinDetail) {
-    const guides = [...DIAG_GUIDES].filter(g => g.visible).sort((a, b) => a.order - b.order);
     if (admin) {
       // 관리자가 사용자 화면을 볼 때도 규칙은 편집 가능하게(편의)
       builtinDetail.innerHTML = builtinAdminHtml;
-    } else if (guides.length) {
-      // 일반 사용자: 보기 전용 가이드 카드 (버튼 없음)
-      builtinDetail.innerHTML = guides.map(g => `
-        <div class="rule-item">
-          <div class="rule-num">${g.order}</div>
-          <div class="rule-body">
-            <div class="rule-name">${esc(g.title)}</div>
-            <div class="rule-desc">${esc(g.desc)}</div>
-            ${g.example ? `<div class="rule-desc" style="margin-top:4px;"><strong>적용 사례:</strong> ${esc(g.example)}</div>` : ''}
-            ${g.notice ? `<div class="rule-desc" style="margin-top:4px; color:var(--danger);"><strong>주의사항:</strong> ${esc(g.notice)}</div>` : ''}
-          </div>
-        </div>
-      `).join('');
     } else {
-      builtinDetail.innerHTML = builtinViewHtml;
+      // 가이드를 규칙명/번호로 매칭하기 위한 인덱스
+      const guideByKey = {};
+      DIAG_GUIDES.filter(g => g.visible).forEach(g => {
+        const t = (g.title || '').trim();
+        if (t) guideByKey[t] = g;
+        // 관련 규칙명에 규칙 이름이 포함된 경우도 매칭
+        const rel = (g.relatedRule || '').trim();
+        if (rel) guideByKey[rel] = g;
+      });
+      const findGuide = (rule) => {
+        return guideByKey[rule.name]
+          || guideByKey[rule.num + ' ' + rule.name]
+          || Object.values(guideByKey).find(g => (g.relatedRule || '').includes(rule.name))
+          || null;
+      };
+      builtinDetail.innerHTML = BUILTIN_RULES.map(r => {
+        const g = findGuide(r);
+        const example = g && g.example ? `<div class="rule-desc" style="margin-top:4px;"><strong>적용 사례:</strong> ${esc(g.example)}</div>` : '';
+        const notice = g && g.notice ? `<div class="rule-desc" style="margin-top:4px; color:var(--danger);"><strong>주의사항:</strong> ${esc(g.notice)}</div>` : '';
+        return `
+        <div class="rule-item">
+          <div class="rule-num">${r.num}</div>
+          <div class="rule-body">
+            <div class="rule-name">${esc(r.name)}</div>
+            <div class="rule-desc">${esc((g && g.desc) || r.desc)}</div>
+            ${example}
+            ${notice}
+          </div>
+          <div class="rule-severity ${severityClass(r.severity)}">${esc(r.severity)}</div>
+        </div>`;
+      }).join('');
     }
   }
 
@@ -6552,6 +6630,85 @@ const servicePolicy = {
   guestAllowed: true         // false면 비회원 분석 차단
 };
 
+/* 관리자 계정 (데모) — 최초값 admin / admin1234
+   [SERVER] 실제로는 서버 DB의 해시된 비밀번호와 비교해야 함.
+   여기서는 데모로 메모리(+localStorage)에 보관하며 변경 가능. */
+const ADMIN_CRED_KEY = 'ccap_admin_cred_v1';
+let adminCred = { id: 'admin', pw: 'admin1234' };
+try {
+  const saved = localStorage.getItem(ADMIN_CRED_KEY);
+  if (saved) { const o = JSON.parse(saved); if (o && o.id && o.pw) adminCred = o; }
+} catch(e) {}
+
+function _saveAdminCred() {
+  try { localStorage.setItem(ADMIN_CRED_KEY, JSON.stringify(adminCred)); } catch(e) {}
+}
+
+/* 관리자 로그인 (아이디/비밀번호) */
+function adminLogin(id, pw) {
+  // [SERVER] 실제로는 서버에 POST /admin/login → 검증 후 관리자 토큰 발급
+  if (id === adminCred.id && pw === adminCred.pw) {
+    authState.loggedIn = true;
+    authState.role = ROLE.ADMIN;
+    authState.provider = 'admin';
+    authState.email = adminCred.id;
+    renderNav();
+    updateAuthUI();
+    closeAdminLogin();
+    goView('view-admin');
+    toast('관리자로 로그인되었습니다.');
+    return true;
+  }
+  toast('아이디 또는 비밀번호가 올바르지 않습니다.', 4000);
+  return false;
+}
+
+/* 관리자 비밀번호/아이디 변경 */
+function changeAdminCred(newId, newPw) {
+  if (!isAdmin()) { toast('관리자만 변경할 수 있습니다.'); return false; }
+  if (!newId || !newPw) { toast('아이디와 비밀번호를 모두 입력해 주세요.'); return false; }
+  if (newPw.length < 6) { toast('비밀번호는 6자 이상으로 설정해 주세요.'); return false; }
+  adminCred = { id: newId.trim(), pw: newPw };
+  _saveAdminCred();
+  // [SERVER] 실제로는 서버에 PATCH /admin/credentials (현재 비밀번호 확인 포함)
+  toast('관리자 계정 정보가 변경되었습니다.');
+  return true;
+}
+
+/* 관리자 로그인 모달 열기/닫기 */
+function openAdminLogin() {
+  const m = document.getElementById('admin-login-modal');
+  if (!m) return;
+  document.getElementById('al-id').value = '';
+  document.getElementById('al-pw').value = '';
+  m.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('al-id').focus(), 100);
+}
+function closeAdminLogin() {
+  const m = document.getElementById('admin-login-modal');
+  if (m) m.classList.remove('show');
+  document.body.style.overflow = '';
+}
+function submitAdminLogin() {
+  adminLogin(document.getElementById('al-id').value.trim(), document.getElementById('al-pw').value);
+}
+
+/* 대시보드 계정 변경 폼 처리 */
+function submitAdminCredChange() {
+  const id = document.getElementById('ac-id').value.trim();
+  const pw = document.getElementById('ac-pw').value;
+  const pw2 = document.getElementById('ac-pw2').value;
+  if (pw !== pw2) { toast('비밀번호 확인이 일치하지 않습니다.'); return; }
+  if (changeAdminCred(id, pw)) {
+    authState.email = adminCred.id;
+    updateAuthUI();
+    document.getElementById('ac-id').value = '';
+    document.getElementById('ac-pw').value = '';
+    document.getElementById('ac-pw2').value = '';
+  }
+}
+
 /* [SERVER] 실제 환경에서는 이 함수가 서버에 토큰을 보내 role을 검증해야 함.
    데모에서는 클라이언트 authState만 확인. */
 function isAdmin() { return authState.loggedIn && authState.role === ROLE.ADMIN; }
@@ -6664,13 +6821,13 @@ function updateAuthUI() {
   const el = document.getElementById('auth-status');
   if (!el) return;
   if (isAdmin()) {
-    el.innerHTML = `<span class="role-badge role-admin">관리자</span> <button class="nav-link" style="padding:6px 10px;" onclick="logout()">로그아웃</button>`;
+    el.innerHTML = `<span class="role-badge role-admin">관리자</span> <button class="nav-link" style="padding:6px 10px;" onclick="goView('view-admin')">관리자 페이지</button> <button class="nav-link" style="padding:6px 10px;" onclick="logout()">로그아웃</button>`;
   } else if (isMember()) {
     el.innerHTML = `<span class="role-badge role-member">회원</span> <button class="nav-link" style="padding:6px 10px;" onclick="logout()">로그아웃</button>`;
   } else if (authState.provider === 'guest') {
-    el.innerHTML = `<span class="role-badge role-guest">비회원</span> <button class="nav-link" style="padding:6px 10px;" onclick="goView('view-login')">로그인</button>`;
+    el.innerHTML = `<span class="role-badge role-guest">비회원</span> <button class="nav-link" style="padding:6px 10px;" onclick="goView('view-login')">로그인</button> <button class="nav-link" style="padding:6px 10px; color:var(--muted);" onclick="openAdminLogin()">🔐 관리자</button>`;
   } else {
-    el.innerHTML = `<button class="nav-link" style="padding:6px 10px;" onclick="goView('view-login')">로그인</button>`;
+    el.innerHTML = `<button class="nav-link" style="padding:6px 10px;" onclick="goView('view-login')">로그인</button> <button class="nav-link" style="padding:6px 10px; color:var(--muted);" onclick="openAdminLogin()">🔐 관리자</button>`;
   }
 }
 
@@ -6753,6 +6910,10 @@ function renderAdmin() {
   // 비회원 정책 체크박스 동기화
   const ga = document.getElementById('admin-guest-allow');
   if (ga) ga.checked = servicePolicy.guestAllowed;
+
+  // 계정 변경 폼: 현재 아이디 placeholder
+  const acId = document.getElementById('ac-id');
+  if (acId) acId.placeholder = '현재: ' + adminCred.id;
 }
 
 function renderAdminGuideList() {
