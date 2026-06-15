@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781529899">
+<meta name="pq-build" content="1781538926">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <style>
@@ -254,8 +254,9 @@ var PQ_STORAGE = 'pq_standards_v1';
 var CCAP_KEYS = ['ccap_data_v1', 'ccap_autosave_v1'];
 
 /* ── 클라우드(개인 로그인 + R2 저장) ── */
-var DATA_API = 'https://jnr-data.emsarang.workers.dev'; // ★ 배포 후 본인 Worker 주소로 교체 ★
+var DATA_API = 'https://jnr-data.your-name.workers.dev'; // ★ 배포 후 본인 Worker 주소로 교체 ★
 var CLOUD_ON = DATA_API.indexOf('your-name') === -1;     // 주소 교체 전에는 로컬 모드로 동작
+var AI_API = 'https://jnr-api.emsarang.workers.dev';      // Gemini 프록시(jnr-api) — 절대 건드리지 말 것
 var auth = { token: null, user: null, role: null };
 
 /* ── 발주청 PQ 기준표 (앱 내장 / 단일 HTML) ──
@@ -404,6 +405,7 @@ var pqState = {
   cost: '',
   interview: '미평가',
   rates: [],
+  aiReco: [],
   analyzed: false
 };
 
@@ -456,6 +458,7 @@ function loadFromCCAP() {
   pqState.personalInfo = data.personalInfo || null;
   pqState.projects = data.projects || [];
   pqState.rates = pqState.projects.map(function(){ return 100; });
+  pqState.aiReco = [];
   pqState.analyzed = false;
   pqState.loadedFrom = from;
   var name = (pqState.personalInfo && (pqState.personalInfo.name || pqState.personalInfo['성명'])) || '(이름 없음)';
@@ -466,6 +469,7 @@ function loadFromCCAP() {
 
 function onAgencyChange() {
   pqState.agency = document.getElementById('agency-select').value;
+  pqState.aiReco = [];
   refreshCostOptions();
   if (pqState.analyzed) runAnalysis(true);
 }
@@ -530,12 +534,24 @@ function renderSummary(a){
 }
 
 function renderProjectsView(a){
+  var std=PQ_STANDARDS[pqState.agency];
+  var canAI=!!(std && std.주공종 && std.주공종.length);
+  var aiBtn=canAI
+    ? '<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+      + '<button class="btn small" id="ai-rate-btn" onclick="aiAutoRate()">🤖 AI 인정율 자동판정</button>'
+      + '<span class="help" style="margin:0;">'+escapeHtml(pqState.agency)+' 해당분야 판정 규칙으로 프로젝트별 인정율을 추천합니다. 추천값은 <strong style="color:var(--accent);">검토필요</strong> — 최종 판단은 직접 확인하세요.</span>'
+      + '</div>'
+    : '';
+  var rateOpts=function(rate){ var base=[100,70,50,0]; if(base.indexOf(+rate)<0){ base.push(+rate); base.sort(function(p,q){return q-p;}); } return base.map(function(v){return '<option value="'+v+'"'+(rate==v?' selected':'')+'>'+v+'%</option>';}).join(''); };
   var head='<tr><th>#</th><th>사업명</th><th>기간</th><th>일수</th><th>공사종류</th><th>담당업무</th><th>인정율</th><th>인정일수</th></tr>';
   var body=a.rows.map(function(x){
-    var sel='<select onchange="setRate('+x.i+',this.value)" style="padding:4px 6px;font-size:12px;">'+[100,70,50,0].map(function(v){return '<option value="'+v+'"'+(x.rate==v?' selected':'')+'>'+v+'%</option>';}).join('')+'</select>';
-    return '<tr><td>'+(x.i+1)+'</td><td>'+escapeHtml(x.p.name||'')+'</td><td style="white-space:nowrap;">'+escapeHtml((x.p.startDate||'')+' ~ '+(x.p.endDate||''))+'</td><td>'+x.days+'일</td><td>'+escapeHtml(x.p.workType||'')+'</td><td>'+escapeHtml(x.p.duty||x.p.field||'')+'</td><td>'+sel+'</td><td>'+x.w+'일</td></tr>';
+    var sel='<select onchange="setRate('+x.i+',this.value)" style="padding:4px 6px;font-size:12px;">'+rateOpts(x.rate)+'</select>';
+    var reco=(pqState.aiReco && pqState.aiReco[x.i]) || null;
+    var badge=reco ? '<div style="margin-top:5px;"><span class="badge" style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);cursor:help;" title="'+escapeHtml(reco.reason||'')+'">AI 추천 '+reco.rate+'% · 검토필요</span></div>' : '';
+    return '<tr><td>'+(x.i+1)+'</td><td>'+escapeHtml(x.p.name||'')+'</td><td style="white-space:nowrap;">'+escapeHtml((x.p.startDate||'')+' ~ '+(x.p.endDate||''))+'</td><td>'+x.days+'일</td><td>'+escapeHtml(x.p.workType||'')+'</td><td>'+escapeHtml(x.p.duty||x.p.field||'')+'</td><td>'+sel+badge+'</td><td>'+x.w+'일</td></tr>';
   }).join('');
-  document.getElementById('view-projects').querySelector('.panel-body').innerHTML='<table class="dt">'+head+body+'</table><div class="help" style="margin-top:12px;">인정율을 바꾸면 해당분야 경력·점수가 즉시 다시 계산됩니다. (해당분야 자동 판정은 4단계 AI에서 추가 예정 — 현재는 100% 기본값에서 직접 조정)</div>';
+  var note='<div class="help" style="margin-top:12px;">인정율을 바꾸면 해당분야 경력·점수가 즉시 다시 계산됩니다. AI 추천값은 발주청 해당분야 판정 규칙에 근거한 <strong>사전 검토자료</strong>이며 최종 인정여부를 단정하지 않습니다. 인정율을 직접 조정하면 해당 행의 “검토필요” 표시는 사라집니다(검토 완료로 간주). 뱃지에 마우스를 올리면 판정 근거가 표시됩니다.</div>';
+  document.getElementById('view-projects').querySelector('.panel-body').innerHTML=aiBtn+'<table class="dt">'+head+body+'</table>'+note;
 }
 
 function renderShortageView(a){
@@ -583,7 +599,86 @@ function runAnalysis(silent){
   scheduleSave();
   if(!silent) toast(pqState.agency+' 기준으로 산정했습니다.');
 }
-function setRate(i,v){ pqState.rates[i]=+v; if(pqState.analyzed) runAnalysis(true); }
+function setRate(i,v){ pqState.rates[i]=+v; if(pqState.aiReco) pqState.aiReco[i]=null; if(pqState.analyzed) runAnalysis(true); }
+
+/* ── 4단계: AI 인정율 자동판정 (Gemini via jnr-api 프록시) ── */
+function pqApiBody(prompt, maxTokens){
+  return JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:maxTokens||4000, temperature:0, messages:[{ role:'user', content:prompt }] });
+}
+async function callPQGemini(prompt, maxTokens){
+  var res=await fetch(AI_API, { method:'POST', mode:'cors', cache:'no-store', headers:{ 'Content-Type':'application/json', 'X-Request-Type':'text' }, body:pqApiBody(prompt, maxTokens) });
+  if(!res.ok){ var t=''; try{ t=await res.text(); }catch(e){} throw new Error('AI 서버 '+res.status+' '+String(t).slice(0,140)); }
+  var data=await res.json();
+  var text=(data.content||[]).map(function(b){ return b.text||''; }).join('\n').trim();
+  text=text.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
+  var s=text.indexOf('{'), e=text.lastIndexOf('}');
+  if(s<0||e<0) throw new Error('AI 응답에서 JSON을 찾지 못했습니다.');
+  return JSON.parse(text.slice(s, e+1));
+}
+function buildRateRuleText(std){
+  var lines=[];
+  if(std.meta){ if(std.meta.인정율색) lines.push('인정율 구분: '+std.meta.인정율색); if(std.meta.비고) lines.push('비고: '+std.meta.비고); }
+  if(std.주공종 && std.주공종.length){ lines.push('해당분야 판정 기준(주공종별):'); std.주공종.forEach(function(r){ lines.push(' - '+r[0]+': '+r[1]); }); }
+  return lines.join('\n');
+}
+function buildRatePrompt(std){
+  var rule=buildRateRuleText(std);
+  var list=pqState.projects.map(function(p,i){
+    return i+'. 사업명="'+(p.name||'')+'" / 공사종류="'+(p.workType||'')+'" / 직무분야="'+(p.field||'')+'" / 세부="'+(p.specialty||'')+'" / 담당업무="'+(p.duty||'')+'" / 책임정도(직위)="'+(p.position||'')+'" / 발주처="'+(p.owner||'')+'"';
+  }).join('\n');
+  return [
+    '당신은 한국 건설기술인 PQ(입찰참가자격사전심사) 경력의 \'해당분야 인정율\' 판정을 돕는 보조 도구입니다.',
+    '발주청: '+pqState.agency,
+    '',
+    '[발주청 해당분야 판정 규칙]',
+    rule,
+    '',
+    '[판정할 프로젝트 목록]',
+    list,
+    '',
+    '[판정 지침]',
+    '- 각 프로젝트의 해당분야 인정율을 100, 70, 50, 0 (%) 중 하나의 값으로만 판정한다.',
+    '- 100 = 위 규칙의 해당분야 주공종·담당업무·책임정도에 명확히 부합. 70 또는 50 = 부분적·간접적으로만 부합. 0 = 해당분야가 아니거나 제외 대상.',
+    '- 반드시 위에 제시된 발주청 규칙에만 근거하여 판단하고, 규칙에 없는 내용을 임의로 만들지 않는다.',
+    '- 정보가 부족하거나 애매하면 더 보수적인(낮은) 값을 택하고 그 이유를 근거에 적는다.',
+    '- 이 결과는 사람이 최종 검토하는 사전 검토자료이며, 최종 인정여부를 단정하지 않는다.',
+    '',
+    '결과는 순수 JSON 객체 하나만 반환하세요. 코드펜스(```)나 다른 설명은 절대 붙이지 마세요.',
+    '형식: {"results":[{"i":0,"rate":100,"reason":"한 문장 근거(한국어)"}]}'
+  ].join('\n');
+}
+async function aiAutoRate(){
+  if(!pqState.projects.length){ toast('먼저 경력 데이터를 불러오세요.'); return; }
+  if(!pqState.agency){ toast('발주청 기준을 선택하세요.'); return; }
+  var std=PQ_STANDARDS[pqState.agency];
+  if(!std || !std.주공종 || !std.주공종.length){ toast('이 발주청은 해당분야 판정 규칙이 아직 없어 AI 판정을 할 수 없습니다.'); return; }
+  if(!pqState.analyzed){ toast('먼저 분석을 실행한 뒤 AI 판정을 사용하세요.'); return; }
+  var btn=document.getElementById('ai-rate-btn'), oldTxt=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='🤖 AI 분석 중…'; }
+  try{
+    var maxTok=Math.min(8000, 1200 + pqState.projects.length*130);
+    var out=await callPQGemini(buildRatePrompt(std), maxTok);
+    var arr=(out && out.results) || [];
+    if(!Array.isArray(arr) || !arr.length) throw new Error('AI 추천 결과가 비어 있습니다.');
+    if(!pqState.aiReco) pqState.aiReco=[];
+    var applied=0;
+    arr.forEach(function(r){
+      var i=parseInt(r.i,10); if(isNaN(i)||i<0||i>=pqState.projects.length) return;
+      var rate=parseInt(r.rate,10); if([100,70,50,0].indexOf(rate)<0) return;
+      pqState.rates[i]=rate;
+      pqState.aiReco[i]={ rate:rate, reason:String(r.reason||'') };
+      applied++;
+    });
+    if(!applied) throw new Error('적용 가능한 추천이 없습니다.');
+    runAnalysis(true);
+    toast('AI가 '+applied+'건의 인정율을 추천했습니다. 검토필요 — 직접 확인 후 조정하세요.', 5000);
+  }catch(err){
+    toast('AI 판정 실패: '+((err && err.message) || err), 5000);
+  }finally{
+    var b=document.getElementById('ai-rate-btn');
+    if(b){ b.disabled=false; b.textContent=oldTxt||'🤖 AI 인정율 자동판정'; }
+  }
+}
 
 /* ── 기준 관리 화면 렌더 ── */
 function stdTable(t) {
@@ -688,6 +783,7 @@ async function loadDataCloud(){
         pqState.personalInfo=d.data.ccap.personalInfo||null;
         pqState.projects=d.data.ccap.projects||[];
         pqState.rates=(d.data.pq&&d.data.pq.rates)||pqState.projects.map(function(){return 100;});
+        pqState.aiReco=(d.data.pq&&d.data.pq.aiReco)||[];
         var el=document.getElementById('data-status');
         var nm=(pqState.personalInfo&&(pqState.personalInfo.name||pqState.personalInfo['성명']))||'(이름 없음)';
         el.innerHTML='<strong style="color:var(--ink);">클라우드에서 경력 데이터를 불러왔습니다.</strong><br>대상자: '+escapeHtml(nm)+' · 프로젝트 '+pqState.projects.length+'건';
@@ -701,7 +797,7 @@ var _saveT=null;
 function scheduleSave(){ if(!CLOUD_ON||!auth.token) return; clearTimeout(_saveT); _saveT=setTimeout(saveCloud,1200); }
 async function saveCloud(){
   if(!CLOUD_ON||!auth.token) return;
-  var blob={ ccap:{ personalInfo:pqState.personalInfo, projects:pqState.projects }, pq:{ agency:pqState.agency, grade:pqState.grade, subgrade:pqState.subgrade, cost:pqState.cost, interview:pqState.interview, rates:pqState.rates } };
+  var blob={ ccap:{ personalInfo:pqState.personalInfo, projects:pqState.projects }, pq:{ agency:pqState.agency, grade:pqState.grade, subgrade:pqState.subgrade, cost:pqState.cost, interview:pqState.interview, rates:pqState.rates, aiReco:pqState.aiReco } };
   try{ await fetch(apiUrl('/data'),{ method:'PUT', headers:authHeaders(), body:JSON.stringify({data:blob}) }); }catch(e){}
 }
 function showAdminStdBtn(){
