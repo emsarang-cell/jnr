@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781527963">
+<meta name="pq-build" content="1781529045">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <style>
@@ -146,6 +146,33 @@
               <option value="커스텀">사용자 정의 기준</option>
             </select>
           </div>
+          <div>
+            <label class="fld">평가 등급</label>
+            <select id="grade-select" onchange="onParamChange()">
+              <option value="책임">책임기술인</option>
+              <option value="분야별">분야별기술인</option>
+              <option value="기술지원">기술지원기술인</option>
+            </select>
+          </div>
+          <div>
+            <label class="fld">세부 등급</label>
+            <select id="subgrade-select" onchange="onParamChange()">
+              <option value="특급">특급</option>
+              <option value="고급">고급</option>
+              <option value="중급">중급</option>
+            </select>
+          </div>
+          <div>
+            <label class="fld">공사비 규모</label>
+            <select id="cost-select" onchange="onParamChange()"><option value="">해당없음</option></select>
+          </div>
+          <div>
+            <label class="fld">면접 평가(LH)</label>
+            <select id="interview-select" onchange="onParamChange()">
+              <option value="미평가">미평가</option>
+              <option value="평가">평가</option>
+            </select>
+          </div>
           <button class="btn small" onclick="runAnalysis()">PQ 분석 실행</button>
         </div>
       </div>
@@ -211,6 +238,21 @@ var PQ_STANDARDS = {
       인정율색: '노란색 100% · 붉은색 70% · 녹색 50%',
       비고: '아파트 건설공사가 주 대상. 해당분야경력은 월(개월) 단위로 평가. 본 기준은 시공단계([붙임1]) 기준이며, 설계+시공단계([붙임2], 참여기술인 50점 구조)는 추후 등록 예정.'
     },
+    calc: {
+      해당분야단위: '월',
+      직무분야: {
+        책임: [[15,null,9],[13,15,8.1],[11,13,7.2],[9,11,6.3],[0,9,5.4]],
+        분야별: { 특급:[[12,null,9],[10,12,8],[0,10,7]], 고급:[[8,null,9],[7,8,8],[0,7,7]], 초중급:[[3,null,9],[2,3,8],[0,2,7]] }
+      },
+      해당분야: {
+        책임_면접미평가: [[60,null,15],[48,60,13.5],[36,48,12],[24,36,10.5],[0,24,9]],
+        책임_면접평가: { '20억미만':[[60,null,13],[48,60,11.5],[36,48,10],[24,36,8.5],[0,24,7]], '20~30억':[[60,null,12],[48,60,10.5],[36,48,9],[24,36,7.8],[0,24,6]], '30억↑':[[60,null,11],[48,60,9.5],[36,48,8],[24,36,7.8],[0,24,5]] },
+        분야별: { 특급:[[48,null,15],[42,48,13.5],[36,42,12],[30,36,10.5],[0,30,9]], 고급:[[36,null,15],[30,36,13.5],[24,30,12],[0,24,10.5]], 초중급:[[24,null,15],[0,24,13.5]] },
+        기술지원: [[48,null,6],[42,48,5.4],[36,42,4.8],[24,36,4.2],[0,24,3.6]]
+      },
+      단장자동: false,
+      단장안내: 'LH 책임기술인 단장조건은 예정공사비별 「공사비 N억↑ 시공단계 CM경력 1년↑ + 등급(특급/고급)」 자격 충족 여부입니다. 경력증명서에는 공사비 데이터가 없어 자동 판정에서 제외하며, 보유 연수만 참고로 표시합니다.'
+    },
     배점: [
       ['참여기술인', '60', '책임 25 + 분야별 25 + 기술지원 10 + 면접 3~6'],
       ['유사엔지니어링 수행실적', '10', '사업자실적 8 + 수행성과 2'],
@@ -261,6 +303,60 @@ var PQ_STANDARDS = {
       '재정상태 건실도 CCC+이하 2.0 보정 (소규모 2.4)',
       '「중대한 건설사고 발생 감점규정」 삭제 (20차 핵심개정)'
     ]
+  },
+  조달청: {
+    meta: {
+      발주청: '조달청',
+      지침: '조달청 시설공사 건설사업관리용역 사업수행능력 세부평가기준',
+      개정: '2026 개정안 추출 (검수 전 초안)',
+      시행일: '공고문 확인 필요',
+      적격: '일반적으로 PQ 90점 이상 (공고문 확인)',
+      산정: '세부 산정방식은 공고문·세부기준 확인',
+      인정율색: '100% / 70% / 60% 등 (기준율표 참조)',
+      비고: '원본 PQ_조달청_추출데이터.json(조달청 2026 개정안 추출, 검수 전 초안) 반영. 책임·분야별·기술지원 직무분야 점수와 책임 해당분야 공사비규모별 점수는 확보. 다만 분야별·기술지원의 \'해당분야경력\' 공사비규모별 배점표는 원본에서도 미추출 상태라 계산에서 \'기준 미확보\'로 표시됩니다. 해당분야경력은 \'년\' 단위로 평가(LH는 \'월\').'
+    },
+    배점: [
+      ['참여기술인','60','책임(해당15+직무9+교육1+면접2~4) / 분야별(15+9+1+면접1~2) / 기술지원(해당6+직무3+교육1+특정경력자격1)'],
+      ['유사용역 수행실적','10',''],
+      ['신용도','15','업무정지7 + 벌점5 + 재정3'],
+      ['기술개발 및 투자실적','10','개발활용3 + 투자7'],
+      ['교체빈도','5','용역사업자3 + 참여기술인2'],
+      ['가점','+0.6','신규고용률 0.4 + 공사비절감 기여 0.2'],
+      ['감점','-10','부패행위 -5 + 중복배치통보 위반 -5']
+    ],
+    단장: {
+      head: ['등급','해당분야경력(인정율 반영)','직무분야경력(인정율 미반영)','기타 자격(건축 기준)'],
+      rows: [
+        ['책임','15년 이상','15년 이상','건축사 또는 기술사 · 감독권한대행 상주CM 1년↑ · 공사비 300억↑ CM 1년↑'],
+        ['분야별','4년 이상','12년 이상','건축 등 8분야'],
+        ['기술지원','15년 이상','15년 이상','건축 등 8분야']
+      ],
+      note: '건축 직무 기준(4-2). 해당분야경력은 인정율 반영, 직무분야경력은 인정율 미반영.'
+    },
+    tables: [
+      { title:'책임 — 해당분야경력 (15점, 년, 공사비규모별)', head:['공사비규모','15','13.5','12','10.5','9'], rows:[['1000억↑','15↑','13~15','11~13','9~11','9미만'],['500~1000억','13↑','11~13','9~11','7~9','7미만'],['300~500억','11↑','9~11','7~9','5~7','5미만'],['300억미만','9↑','7~9','5~7','3~5','3미만']], note:'책임기술인 변경 시 점수 범위: 11~13 / 9.5~11.5 / 8~10 / 6.5~8.5 / 5~7' },
+      { title:'책임 — 직무분야실적 (9점, 년)', head:['등급','9','8.1','7.2','6.3','5.4'], rows:[['특급','15↑','13~15','11~13','9~11','9미만'],['고급이하','12↑','10~12','8~10','6~8','6미만']], note:'책임기술인 변경 시 점수 차감(변경시 만점 8점): 8 / 7.2 / 6.4 / 5.6 / 4.8' },
+      { title:'분야별 — 직무분야실적 (9점, 년)', head:['등급','9','8.1','7.2','6.3','5.4'], rows:[['특급','10↑','8~10','6~8','4~6','4미만'],['고급','8↑','6~8','4~6','2~4','2미만'],['중급','6↑','4~6','2~4','2미만','—']] },
+      { title:'기술지원 — 직무분야실적 (3점, 년)', head:['15↑','13~15','11~13','9~11','9미만'], rows:[['3','2.4','1.8','1.2','0.6']] }
+    ],
+    주공종: [
+      ['건축(아파트 등)','용도별 건축물 + 담당업무(설계/시공/감리/CM 등) + 책임정도(상주/책임기술인 등) 조합으로 해당분야 100% 판정'],
+      ['해당분야 이외','조달청 기준율표(인정_기준율)에 따라 60% 등 차등 적용']
+    ],
+    변경: ['원본 PQ_조달청_추출데이터.json(2026 개정안 추출, 검수 전 초안) 반영. 분야별 직무분야 점수 확정. 분야별·기술지원 해당분야경력 배점표는 원본에서도 미추출.'],
+    calc: {
+      해당분야단위: '년',
+      직무분야: {
+        책임: { 특급:[[15,null,9],[13,15,8.1],[11,13,7.2],[9,11,6.3],[0,9,5.4]], 고급이하:[[12,null,9],[10,12,8.1],[8,10,7.2],[6,8,6.3],[0,6,5.4]] },
+        분야별: { 특급:[[10,null,9],[8,10,8.1],[6,8,7.2],[4,6,6.3],[0,4,5.4]], 고급:[[8,null,9],[6,8,8.1],[4,6,7.2],[2,4,6.3],[0,2,5.4]], 중급:[[6,null,9],[4,6,8.1],[2,4,7.2],[0,2,6.3]] },
+        기술지원: [[15,null,3],[13,15,2.4],[11,13,1.8],[9,11,1.2],[0,9,0.6]]
+      },
+      해당분야: {
+        책임_공사비: { '1000억↑':[[15,null,15],[13,15,13.5],[11,13,12],[9,11,10.5],[0,9,9]], '500~1000억':[[13,null,15],[11,13,13.5],[9,11,12],[7,9,10.5],[0,7,9]], '300~500억':[[11,null,15],[9,11,13.5],[7,9,12],[5,7,10.5],[0,5,9]], '300억미만':[[9,null,15],[7,9,13.5],[5,7,12],[3,5,10.5],[0,3,9]] }
+      },
+      단장요구: { 책임:{해당분야:15,직무분야:15}, 분야별:{해당분야:4,직무분야:12}, 기술지원:{해당분야:15,직무분야:15} },
+      단장자동: true
+    }
   }
 };
 
@@ -268,7 +364,13 @@ var pqState = {
   personalInfo: null,
   projects: [],
   agency: '',
-  loadedFrom: null
+  loadedFrom: null,
+  grade: '책임',
+  subgrade: '특급',
+  cost: '',
+  interview: '미평가',
+  rates: [],
+  analyzed: false
 };
 
 /* ── 상단 메뉴 ── */
@@ -319,6 +421,8 @@ function loadFromCCAP() {
   }
   pqState.personalInfo = data.personalInfo || null;
   pqState.projects = data.projects || [];
+  pqState.rates = pqState.projects.map(function(){ return 100; });
+  pqState.analyzed = false;
   pqState.loadedFrom = from;
   var name = (pqState.personalInfo && (pqState.personalInfo.name || pqState.personalInfo['성명'])) || '(이름 없음)';
   el.innerHTML = '<strong style="color:var(--ink);">경력 데이터를 불러왔습니다.</strong><br>대상자: ' + escapeHtml(name) + ' · 프로젝트 ' + pqState.projects.length + '건 · 발주청 기준을 선택한 뒤 분석을 실행하세요.';
@@ -328,19 +432,123 @@ function loadFromCCAP() {
 
 function onAgencyChange() {
   pqState.agency = document.getElementById('agency-select').value;
+  refreshCostOptions();
+  if (pqState.analyzed) runAnalysis(true);
 }
 
-function runAnalysis() {
-  if (!pqState.projects.length) { toast('먼저 경력 데이터를 불러오세요.'); return; }
-  if (!pqState.agency) { toast('발주청 기준을 선택하세요.'); return; }
-  var hasStd = !!PQ_STANDARDS[pqState.agency];
-  var stdLine = hasStd
-    ? '<br><span class="badge b-rule">기준 등록됨</span> "기준 관리" 메뉴에서 ' + escapeHtml(pqState.agency) + ' 배점표·단장조건을 확인할 수 있습니다.'
-    : '<br>이 발주청의 PQ 기준표는 아직 등록되지 않았습니다. (현재 LH만 등록)';
-  document.getElementById('summary-result').innerHTML =
-    '<div class="help">계산 엔진(인정일수·인정율·점수 산정)은 다음 단계(3단계)에서 구현됩니다. 현재는 골격 + 발주청 기준표 등록 단계입니다.<br>선택한 기준: <strong style="color:var(--ink);">' + escapeHtml(pqState.agency) + '</strong> · 대상 프로젝트: ' + pqState.projects.length + '건' + stdLine + '</div>';
-  toast(pqState.agency + ' 기준 — 계산 엔진은 다음 단계에서 연결됩니다.');
+/* ── 계산 엔진 (3단계): 인정일수·중복제거·인정율·구간점수·단장조건 ── */
+function parseYMD(v){ if(!v) return null; var t=String(v).replace(/[^0-9]/g,' ').trim().split(/\s+/); if(t.length<3) return null; var y=+t[0],m=+t[1],d=+t[2]; if(!y||!m||!d) return null; return new Date(y,m-1,d); }
+function daysInc(a,b){ var x=parseYMD(a),y=parseYMD(b); if(!x||!y||y<x) return 0; return Math.round((y-x)/864e5)+1; }
+function mergeDays(list){ var iv=[]; for(var i=0;i<list.length;i++){ var a=parseYMD(list[i][0]),b=parseYMD(list[i][1]); if(a&&b&&b>=a) iv.push([a.getTime(),b.getTime()]); } iv.sort(function(p,q){return p[0]-q[0];}); if(!iv.length) return 0; var tot=0,cs=iv[0][0],ce=iv[0][1]; for(var j=1;j<iv.length;j++){ if(iv[j][0]<=ce+864e5){ if(iv[j][1]>ce) ce=iv[j][1]; } else { tot+=Math.round((ce-cs)/864e5)+1; cs=iv[j][0]; ce=iv[j][1]; } } return tot+Math.round((ce-cs)/864e5)+1; }
+function pickPt(br,val){ if(!br) return null; for(var i=0;i<br.length;i++){ var b=br[i]; if(val>=b[0] && (b[1]==null||val<b[1])) return b[2]; } return null; }
+function subPick(o,sg){ if(!o) return null; if(o[sg]) return o[sg]; if((sg==='중급'||sg==='고급')&&o['고급이하']) return o['고급이하']; if(o['초중급']) return o['초중급']; if(o['특급']) return o['특급']; var k=Object.keys(o); return k.length?o[k[0]]:null; }
+function dur(days){ var y=Math.floor(days/365), m=Math.floor((days%365)/30); return y+'년 '+m+'개월'; }
+
+function computeAnalysis(){
+  var std=PQ_STANDARDS[pqState.agency]||{}, calc=std.calc;
+  var grade=pqState.grade, sg=pqState.subgrade, cost=pqState.cost, iv=pqState.interview;
+  var ps=pqState.projects, rt=pqState.rates;
+  var rows=ps.map(function(pp,i){ var d=daysInc(pp.startDate,pp.endDate); var r=(rt[i]!=null?rt[i]:100); return {i:i,p:pp,days:d,rate:r,w:Math.round(d*r/100)}; });
+  var jDay=mergeDays(ps.map(function(pp){return [pp.startDate,pp.endDate];}));
+  var hDay=rows.reduce(function(a,x){return a+x.w;},0);
+  var jYr=Math.floor(jDay/365), hMo=Math.floor(hDay/30), hYr=Math.floor(hDay/365);
+  var jPt=null,hPt=null,jNA=false,hNA=false;
+  if(calc){
+    var jb=calc.직무분야 && calc.직무분야[grade];
+    if(jb){ if(Array.isArray(jb)) jPt=pickPt(jb,jYr); else { var sub=subPick(jb,sg); if(sub) jPt=pickPt(sub,jYr); else jNA=true; } }
+    else if(grade==='기술지원' && pqState.agency==='LH') jPt=null;
+    else jNA=true;
+    if(calc.해당분야단위==='월'){
+      var hb=null;
+      if(grade==='책임') hb=(iv==='평가' && calc.해당분야.책임_면접평가)? calc.해당분야.책임_면접평가[cost] : calc.해당분야.책임_면접미평가;
+      else if(grade==='분야별') hb=subPick(calc.해당분야.분야별,sg);
+      else if(grade==='기술지원') hb=calc.해당분야.기술지원;
+      if(hb) hPt=pickPt(hb,hMo); else hNA=true;
+    } else {
+      if(grade==='책임' && calc.해당분야.책임_공사비){ var cb=calc.해당분야.책임_공사비[cost]; if(cb) hPt=pickPt(cb,hYr); else hNA=true; } else hNA=true;
+    }
+  }
+  var dan=[], danMsg=null;
+  if(calc && calc.단장자동 && calc.단장요구 && calc.단장요구[grade]){
+    var req=calc.단장요구[grade];
+    if(req.해당분야!=null) dan.push(['해당분야경력',req.해당분야+'년',hYr+'년',hYr>=req.해당분야,Math.max(0,req.해당분야-hYr)]);
+    if(req.직무분야!=null) dan.push(['직무분야경력',req.직무분야+'년',jYr+'년',jYr>=req.직무분야,Math.max(0,req.직무분야-jYr)]);
+  } else if(calc && calc.단장안내){ danMsg=calc.단장안내; }
+  return {rows:rows,jDay:jDay,hDay:hDay,jYr:jYr,hMo:hMo,hYr:hYr,jPt:jPt,hPt:hPt,jNA:jNA,hNA:hNA,dan:dan,danMsg:danMsg,calc:calc};
 }
+
+function ptStr(v,na){ return na? '<span style="color:var(--muted);">기준 미확보</span>' : (v==null? '<span style="color:var(--muted);">해당없음</span>' : '<span style="color:var(--accent);">'+v+'점</span>'); }
+
+function renderSummary(a){
+  var yearUnit=a.calc && a.calc.해당분야단위==='년';
+  var hVal=yearUnit? a.hYr+'년' : a.hMo+'개월';
+  var kpi='<div class="kpi-grid">'+
+    '<div class="kpi"><div style="font-size:12px;color:var(--muted);font-weight:600;">직무분야 경력(중복제거)</div><div style="font-size:21px;font-weight:800;margin-top:6px;">'+dur(a.jDay)+'</div></div>'+
+    '<div class="kpi"><div style="font-size:12px;color:var(--muted);font-weight:600;">해당분야 경력(인정율 반영)</div><div style="font-size:21px;font-weight:800;margin-top:6px;">'+hVal+'</div></div>'+
+    '<div class="kpi"><div style="font-size:12px;color:var(--muted);font-weight:600;">직무분야 실적 점수</div><div style="font-size:21px;font-weight:800;margin-top:6px;">'+ptStr(a.jPt,a.jNA)+'</div></div>'+
+    '<div class="kpi"><div style="font-size:12px;color:var(--muted);font-weight:600;">해당분야 경력 점수</div><div style="font-size:21px;font-weight:800;margin-top:6px;">'+ptStr(a.hPt,a.hNA)+'</div></div>'+
+  '</div>';
+  var sub=(pqState.grade!=='기술지원'?'('+escapeHtml(pqState.subgrade)+')':'');
+  var costStr=(pqState.cost?' · 규모: '+escapeHtml(pqState.cost):'');
+  var ivStr=(pqState.agency==='LH'&&pqState.grade==='책임'?' · 면접: '+escapeHtml(pqState.interview):'');
+  var info='<div class="help" style="margin-top:14px;">기준: <strong style="color:var(--ink);">'+escapeHtml(pqState.agency)+'</strong> · 등급: '+escapeHtml(pqState.grade)+sub+costStr+ivStr+' · 대상 '+a.rows.length+'건<br>인정일수 = 종료−시작+1 · 중복기간은 직무분야(총경력)에서 자동 제거 · 해당분야경력은 프로젝트별 인정율 가중 합산. 본 산정은 사전 검토자료입니다.</div>';
+  document.getElementById('summary-result').innerHTML=kpi+info;
+}
+
+function renderProjectsView(a){
+  var head='<tr><th>#</th><th>사업명</th><th>기간</th><th>일수</th><th>공사종류</th><th>담당업무</th><th>인정율</th><th>인정일수</th></tr>';
+  var body=a.rows.map(function(x){
+    var sel='<select onchange="setRate('+x.i+',this.value)" style="padding:4px 6px;font-size:12px;">'+[100,70,50,0].map(function(v){return '<option value="'+v+'"'+(x.rate==v?' selected':'')+'>'+v+'%</option>';}).join('')+'</select>';
+    return '<tr><td>'+(x.i+1)+'</td><td>'+escapeHtml(x.p.name||'')+'</td><td style="white-space:nowrap;">'+escapeHtml((x.p.startDate||'')+' ~ '+(x.p.endDate||''))+'</td><td>'+x.days+'일</td><td>'+escapeHtml(x.p.workType||'')+'</td><td>'+escapeHtml(x.p.duty||x.p.field||'')+'</td><td>'+sel+'</td><td>'+x.w+'일</td></tr>';
+  }).join('');
+  document.getElementById('view-projects').querySelector('.panel-body').innerHTML='<table class="dt">'+head+body+'</table><div class="help" style="margin-top:12px;">인정율을 바꾸면 해당분야 경력·점수가 즉시 다시 계산됩니다. (해당분야 자동 판정은 4단계 AI에서 추가 예정 — 현재는 100% 기본값에서 직접 조정)</div>';
+}
+
+function renderShortageView(a){
+  var el=document.getElementById('view-shortage').querySelector('.panel-body');
+  if(a.dan && a.dan.length){
+    var head='<tr><th>요구 조건</th><th>요구</th><th>보유</th><th>판정</th><th>부족</th></tr>';
+    var body=a.dan.map(function(r){ return '<tr><td>'+escapeHtml(r[0])+'</td><td>'+escapeHtml(r[1])+'</td><td>'+escapeHtml(r[2])+'</td><td>'+(r[3]?'<span class="badge b-rule">충족</span>':'<span class="badge" style="background:#fde8e8;color:#c0392b;">부족</span>')+'</td><td>'+(r[4]>0?r[4]+'년':'-')+'</td></tr>'; }).join('');
+    el.innerHTML='<table class="dt">'+head+body+'</table><div class="help" style="margin-top:12px;">단장조건(자격 요구연수) 대비 보유 경력입니다. 공사비·자격증 등 연수 외 요건은 별도 확인이 필요합니다.</div>';
+  } else if(a.danMsg){
+    el.innerHTML='<div class="help">'+escapeHtml(a.danMsg)+'<br><br>보유 직무분야 경력: <strong style="color:var(--ink);">'+dur(a.jDay)+'</strong> · 보유 해당분야 경력: <strong style="color:var(--ink);">'+a.hMo+'개월</strong></div>';
+  } else {
+    el.innerHTML='<div class="empty">선택한 발주청·등급의 단장조건 자동 판정 기준이 없습니다.</div>';
+  }
+}
+
+function syncParams(){
+  var g=document.getElementById('grade-select'); if(g) pqState.grade=g.value;
+  var sg=document.getElementById('subgrade-select'); if(sg) pqState.subgrade=sg.value;
+  var c=document.getElementById('cost-select'); if(c) pqState.cost=c.value;
+  var iv=document.getElementById('interview-select'); if(iv) pqState.interview=iv.value;
+}
+function refreshCostOptions(){
+  var c=document.getElementById('cost-select'); if(!c) return;
+  var std=PQ_STANDARDS[pqState.agency], calc=std&&std.calc, keys=null;
+  if(calc){
+    if(pqState.agency==='조달청' && pqState.grade==='책임' && calc.해당분야.책임_공사비) keys=Object.keys(calc.해당분야.책임_공사비);
+    else if(pqState.agency==='LH' && pqState.grade==='책임' && pqState.interview==='평가' && calc.해당분야.책임_면접평가) keys=Object.keys(calc.해당분야.책임_면접평가);
+  }
+  if(keys){ c.disabled=false; c.innerHTML='<option value="">선택</option>'+keys.map(function(k){return '<option value="'+k+'"'+(pqState.cost===k?' selected':'')+'>'+k+'</option>';}).join(''); }
+  else { c.disabled=true; c.innerHTML='<option value="">해당없음</option>'; pqState.cost=''; }
+}
+function onParamChange(){ syncParams(); refreshCostOptions(); if(pqState.analyzed) runAnalysis(true); }
+
+function runAnalysis(silent){
+  if(!pqState.projects.length){ toast('먼저 경력 데이터를 불러오세요.'); return; }
+  if(!pqState.agency){ toast('발주청 기준을 선택하세요.'); return; }
+  syncParams();
+  if(!PQ_STANDARDS[pqState.agency] || !PQ_STANDARDS[pqState.agency].calc){
+    document.getElementById('summary-result').innerHTML='<div class="help">'+escapeHtml(pqState.agency)+' 기준표가 아직 등록되지 않아 계산할 수 없습니다. (현재 계산 지원: LH·조달청)</div>';
+    pqState.analyzed=false; return;
+  }
+  var a=computeAnalysis();
+  renderSummary(a); renderProjectsView(a); renderShortageView(a);
+  pqState.analyzed=true;
+  if(!silent) toast(pqState.agency+' 기준으로 산정했습니다.');
+}
+function setRate(i,v){ pqState.rates[i]=+v; if(pqState.analyzed) runAnalysis(true); }
 
 /* ── 기준 관리 화면 렌더 ── */
 function stdTable(t) {
@@ -435,6 +643,7 @@ window.addEventListener('DOMContentLoaded', function() {
   goView('view-summary');
   renderDisclaimer();
   renderStandards();
+  refreshCostOptions();
   fillVerBadge();
   loadFromCCAP();
 });
