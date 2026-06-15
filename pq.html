@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781541621">
+<meta name="pq-build" content="1781542352">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg: #FAFAFA; --bg-2: #F4F4F5; --paper: #FFFFFF;
@@ -248,6 +249,21 @@
     <div id="standards-body"></div>
   </section>
 
+  <!-- ====== VIEW: 분석 이력 ====== -->
+  <section class="view" id="view-history">
+    <div class="section-head"><div><div class="eyebrow">분석 이력</div><h2>PQ 분석 이력</h2><div class="sub">지금까지 실행한 PQ 경력 산정 결과가 자동으로 누적·저장됩니다. (본인 계정 기준, 최근 100건)</div></div></div>
+    <div class="panel">
+      <div class="panel-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <h3 style="margin:0;">분석 이력 <span id="hist-count" class="help" style="margin:0;font-weight:600;"></span></h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost small" onclick="loadAnalysisHistory()">새로고침</button>
+          <button class="btn small" id="hist-xlsx-btn" onclick="downloadHistoryExcel()">엑셀 다운로드</button>
+        </div>
+      </div>
+      <div class="panel-body" id="history-body"><div class="empty">불러오는 중…</div></div>
+    </div>
+  </section>
+
 </main>
 
 <div class="authbar" id="authbar"></div>
@@ -444,7 +460,8 @@ var NAV = [
   { id: 'projects',  label: '프로젝트별 상세', view: 'view-projects' },
   { id: 'shortage',  label: '부족조건',      view: 'view-shortage' },
   { id: 'reco',      label: '경정 권고',     view: 'view-reco' },
-  { id: 'standards', label: '기준 관리',     view: 'view-standards' }
+  { id: 'standards', label: '기준 관리',     view: 'view-standards' },
+  { id: 'history',   label: '분석 이력',     view: 'view-history' }
 ];
 
 function renderNav() {
@@ -461,6 +478,7 @@ function goView(id) {
   document.querySelectorAll('.nav-link').forEach(function(b){
     b.classList.toggle('active', b.getAttribute('data-view') === id);
   });
+  if (id === 'view-history') { try { loadAnalysisHistory(); } catch(e) {} }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -970,6 +988,92 @@ async function appendAnalysisHistory(a){
     blob.analyses=arr;
     await fetch(apiUrl('/data'),{ method:'PUT', headers:authHeaders(), body:JSON.stringify({data:blob}) });
   }catch(e){}
+}
+
+/* ── 분석 이력 조회 + 엑셀 다운로드 ── */
+var _histCache=[];
+function _histFmtAt(iso){
+  if(!iso) return '-';
+  var d=new Date(iso); if(isNaN(d.getTime())) return escapeHtml(String(iso));
+  function p(n){ return (n<10?'0':'')+n; }
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function _histHValText(r){
+  if(r.agency==='조달청') return (r.hYr!=null? r.hYr+'년' : '-');
+  return (r.hMo!=null? r.hMo+'개월' : '-');
+}
+function _histPtText(v){ return (v==null? '-' : v+'점'); }
+async function loadAnalysisHistory(){
+  var host=document.getElementById('history-body'); if(!host) return;
+  if(!CLOUD_ON||!auth.token){ _histCache=[]; host.innerHTML='<div class="empty">로그인 후 이용할 수 있습니다.</div>'; renderHistCount(); return; }
+  host.innerHTML='<div class="empty">불러오는 중…</div>';
+  try{
+    var r=await fetch(apiUrl('/data'),{ headers:authHeaders() });
+    var arr=[];
+    if(r.ok){ var d=await r.json(); arr=(d&&d.data&&Array.isArray(d.data.analyses))? d.data.analyses : []; }
+    _histCache=arr.slice();
+    renderHistory(arr);
+  }catch(e){ host.innerHTML='<div class="empty">이력을 불러오지 못했습니다. 잠시 후 다시 시도하세요.</div>'; }
+}
+function renderHistCount(){
+  var c=document.getElementById('hist-count'); if(c) c.textContent=_histCache.length? '· 총 '+_histCache.length+'건' : '';
+}
+function renderHistory(arr){
+  var host=document.getElementById('history-body'); if(!host) return;
+  renderHistCount();
+  if(!arr || !arr.length){ host.innerHTML='<div class="empty">아직 저장된 분석 이력이 없습니다. 발주청을 선택하고 PQ 산정을 실행하면 이력이 자동으로 쌓입니다.</div>'; return; }
+  var rev=arr.slice().reverse(); // 최신순
+  var head='<tr><th>분석시각</th><th>대상자</th><th>발주청</th><th>등급</th><th>규모</th><th>대상</th><th>직무경력</th><th>해당분야경력</th><th>직무점수</th><th>해당점수</th></tr>';
+  var body=rev.map(function(r){
+    var sub=(r.subgrade&&r.grade!=='기술지원')? '('+escapeHtml(r.subgrade)+')' : '';
+    return '<tr>'
+      +'<td style="white-space:nowrap;">'+_histFmtAt(r.at)+'</td>'
+      +'<td>'+escapeHtml(r.name||'-')+'</td>'
+      +'<td>'+escapeHtml(r.agency||'-')+'</td>'
+      +'<td>'+escapeHtml(r.grade||'-')+sub+'</td>'
+      +'<td>'+escapeHtml(r.cost||'-')+'</td>'
+      +'<td>'+(r.projectCount!=null? r.projectCount+'건':'-')+'</td>'
+      +'<td>'+(r.jYr!=null? r.jYr+'년':'-')+'</td>'
+      +'<td>'+_histHValText(r)+'</td>'
+      +'<td>'+_histPtText(r.jPt)+'</td>'
+      +'<td>'+_histPtText(r.hPt)+'</td>'
+      +'</tr>';
+  }).join('');
+  var note='<div class="help" style="margin-top:12px;">최신순으로 표시됩니다. 해당분야 경력 단위는 발주청 기준에 따릅니다(LH=개월, 조달청=년). 점수가 "-"인 경우 기준 미확보 또는 해당없음입니다. 본 이력은 사전 검토자료입니다.</div>';
+  host.innerHTML='<table class="dt">'+head+body+'</table>'+note;
+}
+function downloadHistoryExcel(){
+  if(typeof XLSX==='undefined'){ toast('엑셀 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.'); return; }
+  if(!_histCache || !_histCache.length){ toast('다운로드할 이력이 없습니다.'); return; }
+  var rev=_histCache.slice().reverse(); // 최신순
+  var aoa=[['분석시각','대상자','발주청','등급','세부등급','규모(공사비)','면접','대상 프로젝트수','직무분야 경력(년)','해당분야 경력','직무분야 점수','해당분야 점수','데이터 출처']];
+  rev.forEach(function(r){
+    aoa.push([
+      _histFmtAt(r.at),
+      r.name||'',
+      r.agency||'',
+      r.grade||'',
+      (r.grade!=='기술지원'? (r.subgrade||'') : ''),
+      r.cost||'',
+      r.interview||'',
+      (r.projectCount!=null? r.projectCount : ''),
+      (r.jYr!=null? r.jYr : ''),
+      _histHValText(r),
+      (r.jPt!=null? r.jPt : ''),
+      (r.hPt!=null? r.hPt : ''),
+      r.loadedFrom||''
+    ]);
+  });
+  try{
+    var ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=[{wch:17},{wch:12},{wch:10},{wch:9},{wch:10},{wch:14},{wch:8},{wch:12},{wch:14},{wch:14},{wch:12},{wch:12},{wch:18}];
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'PQ 분석이력');
+    var d=new Date(); function p(n){ return (n<10?'0':'')+n; }
+    var fn='PQ_분석이력_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'.xlsx';
+    XLSX.writeFile(wb, fn);
+    toast('엑셀 파일을 다운로드했습니다. ('+rev.length+'건)');
+  }catch(e){ toast('엑셀 생성 중 오류가 발생했습니다.'); }
 }
 function showAdminStdBtn(){
   var host=document.getElementById('std-tabs-body'); if(!host||document.getElementById('std-save-btn')) return;
