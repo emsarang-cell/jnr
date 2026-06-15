@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781539341">
+<meta name="pq-build" content="1781539794">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <style>
@@ -59,6 +59,11 @@
   .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .panel-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
   .panel-body { padding: 18px 20px; }
+  .cert-drop { border: 1.5px dashed var(--line-2); border-radius: 12px; padding: 26px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; background: var(--bg-2); }
+  .cert-drop:hover, .cert-drop.drag { border-color: var(--accent); background: var(--accent-bg); }
+  .cert-drop-icon { font-size: 30px; line-height: 1; margin-bottom: 8px; }
+  .cert-drop-main { font-size: 14px; color: var(--ink-2); font-weight: 600; }
+  .cert-drop-sub { font-size: 12px; color: var(--muted); margin-top: 5px; }
 
   .btn { display: inline-flex; align-items: center; gap: 6px; padding: 11px 18px; font-size: 14px; font-weight: 600; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; font-family: inherit; transition: filter .12s; }
   .btn:hover { filter: brightness(1.05); }
@@ -100,6 +105,9 @@
   .login-card .ld { margin: 0 0 18px; font-size: 13px; color: var(--muted); line-height: 1.6; text-align: center; }
   .login-card input { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
   .login-card .btn { width: 100%; justify-content: center; margin-top: 6px; }
+  .login-card .login-opt { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2); margin: 2px 0 4px; cursor: pointer; user-select: none; }
+  .login-card .login-opt input { width: auto; margin: 0; box-sizing: content-box; }
+  .login-card .login-opt-note { color: var(--muted); font-size: 11.5px; }
   .login-err { color: #c0392b; font-size: 12.5px; min-height: 16px; margin-bottom: 4px; }
   .login-tab { display: flex; gap: 8px; margin-bottom: 14px; }
   .login-tab button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--paper); cursor: pointer; font-family: inherit; font-size: 13px; }
@@ -140,12 +148,20 @@
     <div class="panel">
       <div class="panel-head">
         <h3>분석 대상 경력 데이터</h3>
-        <div style="display:flex; gap:8px; align-items:center;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button class="btn small" onclick="pqPickCert()">경력증명서 직접 업로드</button>
           <button class="btn ghost small" onclick="loadFromCCAP()">경정 진단에서 불러오기</button>
         </div>
       </div>
       <div class="panel-body">
-        <div id="data-status" class="help">아직 불러온 경력 데이터가 없습니다. "경정 진단에서 불러오기"를 누르면, 경정 진단 시스템에서 입력·추출한 경력을 그대로 가져옵니다.</div>
+        <div id="cert-drop" class="cert-drop" onclick="pqPickCert()">
+          <input type="file" id="cert-file" accept="image/*,application/pdf" style="display:none;" onchange="pqOnCertInput(this)">
+          <div class="cert-drop-icon">📄</div>
+          <div class="cert-drop-main">경력증명서 파일을 여기에 끌어다 놓거나 <span style="color:var(--accent);font-weight:700;">클릭하여 선택</span>하세요</div>
+          <div class="cert-drop-sub">PDF 또는 이미지(JPG·PNG) · 건설기술인 경력증명서</div>
+        </div>
+        <div id="cert-progress" class="help" style="display:none; margin-top:12px;"></div>
+        <div id="data-status" class="help" style="margin-top:12px;">아직 불러온 경력 데이터가 없습니다. 위에서 <strong>경력증명서를 직접 업로드</strong>하거나, "경정 진단에서 불러오기"로 경정 진단 시스템의 경력을 가져올 수 있습니다.</div>
       </div>
     </div>
 
@@ -249,6 +265,8 @@
     <input id="lg-user" placeholder="아이디" autocomplete="username">
     <input id="lg-pass" type="password" placeholder="비밀번호" autocomplete="current-password">
     <input id="lg-code" placeholder="가입 코드(필요시)" style="display:none;">
+    <label class="login-opt"><input type="checkbox" id="lg-remember"> 아이디 저장</label>
+    <label class="login-opt"><input type="checkbox" id="lg-autologin"> 이 기기에서 자동 로그인 <span class="login-opt-note">(공용 PC에서는 사용하지 마세요)</span></label>
     <button class="btn" id="lg-submit" onclick="submitAuth()">로그인</button>
   </div>
 </div>
@@ -690,6 +708,102 @@ async function aiAutoRate(){
   }
 }
 
+/* ── 경력증명서 직접 업로드 (OCR via jnr-api Gemini Vision) ── */
+function pqPickCert(){ var f=document.getElementById('cert-file'); if(f) f.click(); }
+function pqOnCertInput(inp){ if(inp.files && inp.files.length) pqHandleCertFile(inp.files[0]); inp.value=''; }
+function _pqReadJson(data){
+  var text=(data.content||[]).map(function(bk){ return bk.text||''; }).join('\n').trim();
+  text=text.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
+  var s=text.indexOf('{'), e=text.lastIndexOf('}');
+  if(s<0||e<0) throw new Error('AI 응답에서 JSON을 찾지 못했습니다.');
+  return JSON.parse(text.slice(s, e+1));
+}
+function _pqFileToB64(file){
+  return new Promise(function(res, rej){
+    var r=new FileReader();
+    r.onload=function(){ var s=String(r.result); var i=s.indexOf(','); res(i>=0? s.slice(i+1): s); };
+    r.onerror=function(){ rej(new Error('파일을 읽지 못했습니다.')); };
+    r.readAsDataURL(file);
+  });
+}
+var PQ_CERT_PROMPT = [
+  '다음은 한국 건설기술인협회가 발급한 건설기술인 경력증명서(이미지 또는 PDF)입니다.',
+  '문서에서 대상자 성명과 모든 참여사업(경력) 항목을 정확히 읽어 JSON으로 추출하세요.',
+  '각 참여사업에서 다음 항목을 찾습니다(없으면 빈 문자열):',
+  '- name: 사업명/공사명',
+  '- startDate, endDate: 근무기간 시작일/종료일 (반드시 YYYY.MM.DD 형식)',
+  '- owner: 발주청/발주자',
+  '- workType: 공사종류/공종',
+  '- field: 직무분야',
+  '- specialty: 세부공종 또는 용도(있으면)',
+  '- workplace: 근무처/소속',
+  '- position: 직위 또는 책임정도(상주/책임기술인 등)',
+  '- duty: 담당업무',
+  '날짜 표기가 어떻든 반드시 연.월.일 순서의 YYYY.MM.DD로 변환하세요.',
+  '문서에 적힌 내용만 사용하고 임의로 만들지 마세요. 읽기 어려운 값은 빈 문자열로 둡니다.',
+  '결과는 순수 JSON 객체 하나만 반환하세요. 코드펜스나 다른 설명은 절대 붙이지 마세요.',
+  '형식: {"personalInfo":{"name":"성명"},"projects":[{"name":"","startDate":"","endDate":"","owner":"","workType":"","field":"","specialty":"","workplace":"","position":"","duty":""}]}'
+].join('\n');
+async function pqHandleCertFile(file){
+  var prog=document.getElementById('cert-progress');
+  var isPdf=/pdf/i.test(file.type) || /\.pdf$/i.test(file.name||'');
+  var isImg=/^image\//i.test(file.type) || /\.(png|jpe?g|webp|gif)$/i.test(file.name||'');
+  function showProg(html){ if(prog){ prog.style.display='block'; prog.innerHTML=html; } }
+  if(!isPdf && !isImg){ showProg('<span style="color:var(--danger);">지원하지 않는 형식입니다. PDF 또는 이미지 파일을 올려주세요.</span>'); return; }
+  if(file.size > 12*1024*1024){ showProg('<span style="color:var(--danger);">파일이 너무 큽니다(12MB 초과). 더 작은 파일로 다시 시도하세요.</span>'); return; }
+  showProg('⏳ 경력증명서를 분석하는 중입니다… (수십 초 걸릴 수 있습니다)');
+  try{
+    var b64=await _pqFileToB64(file);
+    var mediaType = isPdf ? 'application/pdf' : (file.type || 'image/jpeg');
+    var block = isPdf
+      ? { type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } }
+      : { type:'image', source:{ type:'base64', media_type:mediaType, data:b64 } };
+    var res=await fetch(AI_API, { method:'POST', mode:'cors', cache:'no-store',
+      headers:{ 'Content-Type':'application/json', 'X-Request-Type':'vision' },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:8000, temperature:0,
+        messages:[{ role:'user', content:[ block, { type:'text', text:PQ_CERT_PROMPT } ] }] }) });
+    if(!res.ok){ var t=''; try{ t=await res.text(); }catch(e){} throw new Error('AI 서버 '+res.status+' '+String(t).slice(0,140)); }
+    var out=_pqReadJson(await res.json());
+    var projects=(out && out.projects) || [];
+    if(!Array.isArray(projects) || !projects.length) throw new Error('경력 항목을 추출하지 못했습니다. 더 선명한 파일(특히 이미지)로 다시 시도하세요.');
+    pqState.personalInfo = (out.personalInfo) || pqState.personalInfo || null;
+    pqState.projects = projects;
+    pqState.rates = projects.map(function(){ return 100; });
+    pqState.aiReco = [];
+    pqState.analyzed = false;
+    pqState.loadedFrom = 'upload';
+    var nm=(pqState.personalInfo && (pqState.personalInfo.name || pqState.personalInfo['성명'])) || '(이름 없음)';
+    var ds=document.getElementById('data-status');
+    if(ds){ ds.innerHTML='<strong style="color:var(--ink);">경력증명서에서 경력을 추출했습니다.</strong><br>대상자: '+escapeHtml(nm)+' · 프로젝트 '+projects.length+'건. 추출 결과는 사전 검토자료이니 프로젝트별 화면에서 확인하세요.'; }
+    if(prog) prog.style.display='none';
+    pqRunAfterLoad();
+  }catch(err){
+    showProg('<span style="color:var(--danger);">분석 실패: '+escapeHtml((err && err.message)||String(err))+'</span>');
+  }
+}
+function pqRunAfterLoad(){
+  var sel=document.getElementById('agency-select');
+  if(sel && !sel.value){
+    var pref=['LH','조달청'], first=null, p, i, v;
+    for(p=0;p<pref.length;p++){ if(PQ_STANDARDS[pref[p]] && PQ_STANDARDS[pref[p]].calc){ first=pref[p]; break; } }
+    if(!first){ for(i=0;i<sel.options.length;i++){ v=sel.options[i].value; if(v && PQ_STANDARDS[v] && PQ_STANDARDS[v].calc){ first=v; break; } } }
+    if(first){ sel.value=first; onAgencyChange(); toast(first+' 기준으로 산정했습니다. 상단에서 발주청을 바꾸면 다시 계산됩니다.', 4500); }
+  }
+  syncParams();
+  if(pqState.agency && PQ_STANDARDS[pqState.agency] && PQ_STANDARDS[pqState.agency].calc){
+    runAnalysis(true);
+    goView('view-summary');
+  } else {
+    toast('경력을 불러왔습니다. 발주청 기준을 선택한 뒤 "PQ 분석 실행"을 누르세요.', 4500);
+  }
+}
+function pqInitDrop(){
+  var dz=document.getElementById('cert-drop'); if(!dz) return;
+  ['dragenter','dragover'].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.add('drag'); }); });
+  ['dragleave','drop'].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); e.stopPropagation(); dz.classList.remove('drag'); }); });
+  dz.addEventListener('drop', function(e){ var dt=e.dataTransfer; if(dt && dt.files && dt.files.length) pqHandleCertFile(dt.files[0]); });
+}
+
 /* ── 기준 관리 화면 렌더 ── */
 function stdTable(t) {
   var head = '<tr>' + t.head.map(function(h){ return '<th>' + escapeHtml(h) + '</th>'; }).join('') + '</tr>';
@@ -760,7 +874,7 @@ function renderAuthbar(){
   if(auth.user){ b.style.display='block'; b.innerHTML='👤 '+escapeHtml(auth.user)+' ('+escapeHtml(auth.role)+') · <a onclick="logout()">로그아웃</a>'; }
   else b.style.display='none';
 }
-function logout(){ auth={token:null,user:null,role:null}; try{ sessionStorage.removeItem('pq_token'); }catch(e){} renderAuthbar(); showLogin(); }
+function logout(){ auth={token:null,user:null,role:null}; try{ sessionStorage.removeItem('pq_token'); localStorage.removeItem('pq_token'); localStorage.removeItem('pq_autologin'); }catch(e){} var au=document.getElementById('lg-autologin'); if(au) au.checked=false; renderAuthbar(); prefillLogin(); showLogin(); }
 async function submitAuth(){
   var user=document.getElementById('lg-user').value.trim();
   var pass=document.getElementById('lg-pass').value;
@@ -772,7 +886,7 @@ async function submitAuth(){
     var d=await r.json();
     if(!r.ok){ err.textContent=d.error||'실패했습니다.'; return; }
     auth.token=d.token; auth.user=d.username; auth.role=d.role;
-    try{ sessionStorage.setItem('pq_token', d.token); }catch(e){}
+    persistAuth(d.token, user);
     hideLogin(); afterLogin();
   }catch(e){ err.textContent='서버 연결 실패. Worker 주소(DATA_API)를 확인하세요.'; }
 }
@@ -820,10 +934,27 @@ async function saveStandardsCloud(){
   if(auth.role!=='관리자'){ toast('관리자만 저장할 수 있습니다.'); return; }
   try{ var r=await fetch(apiUrl('/standards'),{ method:'PUT', headers:authHeaders(), body:JSON.stringify({standards:PQ_STANDARDS}) }); if(r.ok) toast('기준표를 클라우드에 저장했습니다. (모든 사용자에게 공유)'); else toast('저장 실패'); }catch(e){ toast('서버 연결 실패'); }
 }
+function persistAuth(token, user){
+  try{ sessionStorage.setItem('pq_token', token); }catch(e){}
+  var rem=document.getElementById('lg-remember'), au=document.getElementById('lg-autologin');
+  try{
+    if(rem && rem.checked) localStorage.setItem('pq_saved_user', user); else localStorage.removeItem('pq_saved_user');
+    if(au && au.checked){ localStorage.setItem('pq_token', token); localStorage.setItem('pq_autologin','1'); }
+    else { localStorage.removeItem('pq_token'); localStorage.removeItem('pq_autologin'); }
+  }catch(e){}
+}
+function prefillLogin(){
+  try{
+    var u=localStorage.getItem('pq_saved_user'), uf=document.getElementById('lg-user'),
+        rem=document.getElementById('lg-remember'), au=document.getElementById('lg-autologin');
+    if(u && uf){ uf.value=u; if(rem) rem.checked=true; }
+    if(localStorage.getItem('pq_autologin')==='1' && au) au.checked=true;
+  }catch(e){}
+}
 async function bootCloud(){
-  var t=null; try{ t=sessionStorage.getItem('pq_token'); }catch(e){}
+  var t=null; try{ t=localStorage.getItem('pq_token') || sessionStorage.getItem('pq_token'); }catch(e){}
   if(t){ auth.token=t; try{ var r=await fetch(apiUrl('/me'),{ headers:authHeaders() }); if(r.ok){ var d=await r.json(); auth.user=d.username; auth.role=d.role; afterLogin(); return; } }catch(e){} auth.token=null; }
-  showLogin();
+  prefillLogin(); showLogin();
 }
 
 /* ── 유의문구 (문서 15번) ── */
@@ -871,6 +1002,7 @@ window.addEventListener('DOMContentLoaded', function() {
   renderStandards();
   refreshCostOptions();
   fillVerBadge();
+  pqInitDrop();
   if (CLOUD_ON) bootCloud(); else loadFromCCAP();
 });
 </script>
