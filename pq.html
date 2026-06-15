@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781541454">
+<meta name="pq-build" content="1781541621">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <style>
@@ -626,6 +626,7 @@ function runAnalysis(silent){
   renderSummary(a); renderProjectsView(a); renderShortageView(a);
   pqState.analyzed=true;
   scheduleSave();
+  try{ appendAnalysisHistory(a); }catch(e){}
   if(!silent) toast(pqState.agency+' 기준으로 산정했습니다.');
 }
 function setRate(i,v){ pqState.rates[i]=+v; if(pqState.aiReco) pqState.aiReco[i]=null; if(pqState.analyzed) runAnalysis(true); }
@@ -875,7 +876,23 @@ function renderAuthbar(){
   if(auth.user){ b.style.display='block'; b.innerHTML='👤 '+escapeHtml(auth.user)+' ('+escapeHtml(auth.role)+') · <a onclick="logout()">로그아웃</a>'; }
   else b.style.display='none';
 }
-function logout(){ auth={token:null,user:null,role:null}; try{ sessionStorage.removeItem('pq_token'); localStorage.removeItem('pq_token'); localStorage.removeItem('pq_autologin'); }catch(e){} var au=document.getElementById('lg-autologin'); if(au) au.checked=false; renderAuthbar(); prefillLogin(); showLogin(); }
+function clearPQState(){
+  pqState.personalInfo=null; pqState.projects=[]; pqState.rates=[]; pqState.aiReco=[];
+  pqState.agency=''; pqState.grade='책임'; pqState.subgrade='특급'; pqState.cost=''; pqState.interview='미평가';
+  pqState.analyzed=false; pqState.loadedFrom=null;
+  var sel=document.getElementById('agency-select'); if(sel) sel.value='';
+  var gs=document.getElementById('grade-select'); if(gs) gs.value='책임';
+  var sg=document.getElementById('subgrade-select'); if(sg) sg.value='특급';
+  var cs=document.getElementById('cost-select'); if(cs) cs.value='';
+  var iv=document.getElementById('interview-select'); if(iv) iv.value='미평가';
+  refreshCostOptions();
+  var sr=document.getElementById('summary-result'); if(sr) sr.innerHTML='<div class="empty">경력 데이터를 불러오고 발주청 기준을 선택한 뒤 "PQ 분석 실행"을 누르면 기준별 산정 결과가 여기에 표시됩니다.</div>';
+  var ds=document.getElementById('data-status'); if(ds) ds.innerHTML='아직 불러온 경력 데이터가 없습니다. 위에서 <strong>경력증명서를 직접 업로드</strong>하거나, "경정 진단에서 불러오기"로 경정 진단 시스템의 경력을 가져올 수 있습니다.';
+  var cp=document.getElementById('cert-progress'); if(cp){ cp.style.display='none'; cp.innerHTML=''; }
+  ['view-projects','view-shortage','view-reco'].forEach(function(id){ var v=document.getElementById(id); if(v){ var b=v.querySelector('.panel-body'); if(b) b.innerHTML='<div class="empty">PQ 분석을 실행하면 결과가 여기에 표시됩니다.</div>'; } });
+  goView('view-summary');
+}
+function logout(){ auth={token:null,user:null,role:null}; try{ sessionStorage.removeItem('pq_token'); localStorage.removeItem('pq_token'); localStorage.removeItem('pq_autologin'); }catch(e){} var au=document.getElementById('lg-autologin'); if(au) au.checked=false; clearPQState(); renderAuthbar(); prefillLogin(); showLogin(); }
 async function submitAuth(){
   var user=document.getElementById('lg-user').value.trim();
   var pass=document.getElementById('lg-pass').value;
@@ -904,7 +921,7 @@ async function loadDataCloud(){
   try{
     var r=await fetch(apiUrl('/data'),{ headers:authHeaders() });
     if(r.ok){ var d=await r.json();
-      if(d.data && d.data.ccap){
+      if(d.data && d.data.ccap && Array.isArray(d.data.ccap.projects) && d.data.ccap.projects.length){
         pqState.personalInfo=d.data.ccap.personalInfo||null;
         pqState.projects=d.data.ccap.projects||[];
         pqState.rates=(d.data.pq&&d.data.pq.rates)||pqState.projects.map(function(){return 100;});
@@ -916,7 +933,6 @@ async function loadDataCloud(){
       }
     }
   }catch(e){}
-  loadFromCCAP();
 }
 var _saveT=null;
 function scheduleSave(){ if(!CLOUD_ON||!auth.token) return; clearTimeout(_saveT); _saveT=setTimeout(saveCloud,1200); }
@@ -926,8 +942,32 @@ async function saveCloud(){
     var blob={};
     try{ var rr=await fetch(apiUrl('/data'),{ headers:authHeaders() }); if(rr.ok){ var dd=await rr.json(); blob=(dd&&dd.data)||{}; } }catch(e){}
     var prevResults=(blob.ccap && blob.ccap.results) || null;
+    var prevAnalyses=Array.isArray(blob.analyses)? blob.analyses : [];
     blob.ccap={ personalInfo:pqState.personalInfo, projects:pqState.projects, results:prevResults };
     blob.pq={ agency:pqState.agency, grade:pqState.grade, subgrade:pqState.subgrade, cost:pqState.cost, interview:pqState.interview, rates:pqState.rates, aiReco:pqState.aiReco };
+    blob.analyses=prevAnalyses;
+    await fetch(apiUrl('/data'),{ method:'PUT', headers:authHeaders(), body:JSON.stringify({data:blob}) });
+  }catch(e){}
+}
+async function appendAnalysisHistory(a){
+  if(!CLOUD_ON||!auth.token) return;
+  try{
+    var blob={};
+    try{ var rr=await fetch(apiUrl('/data'),{ headers:authHeaders() }); if(rr.ok){ var dd=await rr.json(); blob=(dd&&dd.data)||{}; } }catch(e){}
+    var arr=Array.isArray(blob.analyses)? blob.analyses : [];
+    var nm=(pqState.personalInfo&&(pqState.personalInfo.name||pqState.personalInfo['성명']))||'';
+    arr.push({
+      at:new Date().toISOString(),
+      name:nm,
+      projectCount:pqState.projects.length,
+      agency:pqState.agency, grade:pqState.grade, subgrade:pqState.subgrade,
+      cost:pqState.cost||'', interview:pqState.interview||'',
+      jPt:(a&&a.jPt!=null)?a.jPt:null, hPt:(a&&a.hPt!=null)?a.hPt:null,
+      jYr:(a&&a.jYr!=null)?a.jYr:null, hYr:(a&&a.hYr!=null)?a.hYr:null, hMo:(a&&a.hMo!=null)?a.hMo:null,
+      loadedFrom:pqState.loadedFrom||''
+    });
+    if(arr.length>100) arr=arr.slice(-100);
+    blob.analyses=arr;
     await fetch(apiUrl('/data'),{ method:'PUT', headers:authHeaders(), body:JSON.stringify({data:blob}) });
   }catch(e){}
 }
@@ -1010,7 +1050,7 @@ window.addEventListener('DOMContentLoaded', function() {
   refreshCostOptions();
   fillVerBadge();
   pqInitDrop();
-  if (CLOUD_ON) bootCloud(); else loadFromCCAP();
+  if (CLOUD_ON) bootCloud();
 });
 </script>
 </body>
