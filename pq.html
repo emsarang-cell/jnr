@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781541095">
+<meta name="pq-build" content="1781541454">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <style>
@@ -98,16 +98,16 @@
   .authbar a { color: var(--accent); cursor: pointer; font-weight: 600; }
   .login-overlay { position: fixed; inset: 0; z-index: 300; background: linear-gradient(180deg, #F8FAFC 0%, #EEF1F4 100%); display: none; align-items: center; justify-content: center; padding: 20px; }
   .login-overlay.show { display: flex; }
-  .login-card { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 34px 30px; width: 360px; max-width: 92vw; box-shadow: var(--shadow-lg); }
+  .login-card { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 36px 34px; width: 420px; max-width: 94vw; box-shadow: var(--shadow-lg); }
   .login-card .login-logo { display: block; height: 34px; width: auto; margin: 0 auto 8px; }
   .login-card .login-sys { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--accent); margin-bottom: 16px; }
   .login-card h3 { margin: 0 0 6px; font-size: 19px; text-align: center; }
   .login-card .ld { margin: 0 0 18px; font-size: 13px; color: var(--muted); line-height: 1.6; text-align: center; }
   .login-card input { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
   .login-card .btn { width: 100%; justify-content: center; margin-top: 6px; }
-  .login-card .login-opt { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2); margin: 2px 0 4px; cursor: pointer; user-select: none; }
-  .login-card .login-opt input { width: auto; margin: 0; box-sizing: content-box; }
-  .login-card .login-opt-note { color: var(--muted); font-size: 11.5px; }
+  .login-card .login-opt { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-2); margin: 2px 0 4px; cursor: pointer; user-select: none; flex-wrap: nowrap; white-space: nowrap; }
+  .login-card .login-opt input { width: auto; margin: 0; box-sizing: content-box; flex-shrink: 0; }
+  .login-card .login-opt-note { color: var(--muted); font-size: 11.5px; display: block; margin: -2px 0 6px 24px; white-space: normal; }
   .login-err { color: #c0392b; font-size: 12.5px; min-height: 16px; margin-bottom: 4px; }
   .login-tab { display: flex; gap: 8px; margin-bottom: 14px; }
   .login-tab button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--paper); cursor: pointer; font-family: inherit; font-size: 13px; }
@@ -266,7 +266,8 @@
     <input id="lg-pass" type="password" placeholder="비밀번호" autocomplete="current-password">
     <input id="lg-code" placeholder="가입 코드(필요시)" style="display:none;">
     <label class="login-opt"><input type="checkbox" id="lg-remember"> 아이디 저장</label>
-    <label class="login-opt"><input type="checkbox" id="lg-autologin"> 이 기기에서 자동 로그인 <span class="login-opt-note">(공용 PC에서는 사용하지 마세요)</span></label>
+    <label class="login-opt"><input type="checkbox" id="lg-autologin"> 이 기기에서 자동 로그인</label>
+    <div class="login-opt-note">공용 PC에서는 사용하지 마세요.</div>
     <button class="btn" id="lg-submit" onclick="submitAuth()">로그인</button>
   </div>
 </div>

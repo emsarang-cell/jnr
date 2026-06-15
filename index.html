@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="ccap-build" content="1781541095">
+<meta name="ccap-build" content="1781541454">
 <title>건설기술인 경력증명서 AI 진단 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -8428,7 +8428,7 @@ function printAllForms() {
 <style id="r2-style">
 .r2-overlay{ position:fixed; inset:0; z-index:99999; background:linear-gradient(180deg,#F8FAFC 0%,#EEF1F4 100%); display:none; align-items:center; justify-content:center; padding:20px; }
 .r2-overlay.show{ display:flex; }
-.r2-card{ background:var(--paper); border:1px solid var(--line); border-radius:18px; padding:34px 30px; width:360px; max-width:92vw; box-shadow:0 20px 60px rgba(9,9,11,.18); font-family:inherit; text-align:left; }
+.r2-card{ background:var(--paper); border:1px solid var(--line); border-radius:18px; padding:36px 34px; width:420px; max-width:94vw; box-shadow:0 20px 60px rgba(9,9,11,.18); font-family:inherit; text-align:left; }
 .r2-card .r2-logo{ display:block; height:34px; width:auto; margin:0 auto 8px; }
 .r2-card .r2-sys{ text-align:center; font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--accent); margin-bottom:16px; }
 .r2-card h3{ margin:0 0 6px; font-size:19px; text-align:center; color:var(--ink); }
@@ -8438,9 +8438,9 @@ function printAllForms() {
 .r2-tab button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
 .r2-err{ color:var(--danger); font-size:12.5px; min-height:16px; margin-bottom:6px; }
 .r2-card #r2-user, .r2-card #r2-pass, .r2-card #r2-code{ width:100%; box-sizing:border-box; margin-bottom:10px; padding:11px 12px; border:1px solid var(--line); border-radius:9px; font-size:14px; font-family:inherit; color:var(--ink); }
-.r2-opt{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-2); margin:2px 0 4px; cursor:pointer; user-select:none; }
-.r2-opt input{ width:auto; margin:0; }
-.r2-opt-note{ color:var(--muted); font-size:11.5px; }
+.r2-opt{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-2); margin:2px 0 4px; cursor:pointer; user-select:none; flex-wrap:nowrap; white-space:nowrap; }
+.r2-opt input{ width:auto; margin:0; flex-shrink:0; }
+.r2-opt-note{ color:var(--muted); font-size:11.5px; display:block; margin:-2px 0 6px 24px; white-space:normal; }
 .r2-submit{ width:100%; margin-top:8px; padding:12px 0; border:none; border-radius:9px; background:var(--accent); color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
 .r2-submit:hover{ filter:brightness(1.06); }
 </style>
@@ -8459,7 +8459,8 @@ function printAllForms() {
     <input id="r2-pass" type="password" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')r2Submit()">
     <input id="r2-code" type="text" placeholder="가입 코드(필요시)" style="display:none;">
     <label class="r2-opt"><input type="checkbox" id="r2-remember"> 아이디 저장</label>
-    <label class="r2-opt"><input type="checkbox" id="r2-autologin"> 이 기기에서 자동 로그인 <span class="r2-opt-note">(공용 PC에서는 사용하지 마세요)</span></label>
+    <label class="r2-opt"><input type="checkbox" id="r2-autologin"> 이 기기에서 자동 로그인</label>
+    <div class="r2-opt-note">공용 PC에서는 사용하지 마세요.</div>
     <button class="r2-submit" id="r2-submit" onclick="r2Submit()">로그인</button>
   </div>
 </div>
