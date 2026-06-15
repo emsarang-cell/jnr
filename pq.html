@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781522281">
+<meta name="pq-build" content="1781527963">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <style>
@@ -138,7 +138,7 @@
               <option value="">기준을 선택하세요</option>
               <option value="조달청">조달청</option>
               <option value="건진법">건설기술진흥법</option>
-              <option value="LH">LH</option>
+              <option value="LH">LH ✓ (기준 등록됨)</option>
               <option value="국방부">국방부</option>
               <option value="주택법">주택법</option>
               <option value="지자체">지자체</option>
@@ -180,10 +180,8 @@
   <!-- ====== VIEW: 기준 관리 ====== -->
   <section class="view" id="view-standards">
     <div class="section-head"><div><div class="eyebrow">기준 관리</div><h2>발주청 PQ 기준표 관리</h2><div class="sub">발주청별 PQ 심사기준(인정율·단장조건·제외조건 등)을 등록·수정합니다.</div></div></div>
-    <div class="panel"><div class="panel-body">
-      <div class="help" style="margin-bottom:16px;">발주청별 실제 PQ 세부 기준(인정율 %, 단장 요구연수 등)은 공고문·법령에 따라 다릅니다. 이 화면에서 직접 입력·저장하면, 분석 시 해당 수치가 적용됩니다. (다음 단계에서 입력 폼이 추가됩니다.)</div>
-      <div class="empty">기준표 입력 UI는 2단계에서 추가됩니다.</div>
-    </div></div>
+    <div class="panel"><div class="panel-body" id="std-tabs-body"></div></div>
+    <div id="standards-body"></div>
   </section>
 
 </main>
@@ -198,6 +196,73 @@
    ============================================================ */
 var PQ_STORAGE = 'pq_standards_v1';
 var CCAP_KEYS = ['ccap_data_v1', 'ccap_autosave_v1'];
+
+/* ── 발주청 PQ 기준표 (앱 내장 / 단일 HTML) ──
+   LH: 20차개정(제3594호, 2026-05-19 시행) [붙임1] 시공단계 기준 */
+var PQ_STANDARDS = {
+  LH: {
+    meta: {
+      발주청: 'LH',
+      지침: '건설엔지니어링사업자 사업수행능력평가 지침(건설사업관리)',
+      개정: '20차개정 (제3594호)',
+      시행일: '2026-05-19',
+      적격: 'PQ 단독 90점 이상 / PQ+TP·PQ+SOQ 95점 이상',
+      산정: '최종단계 점수를 소수 셋째자리에서 반올림하여 둘째자리까지',
+      인정율색: '노란색 100% · 붉은색 70% · 녹색 50%',
+      비고: '아파트 건설공사가 주 대상. 해당분야경력은 월(개월) 단위로 평가. 본 기준은 시공단계([붙임1]) 기준이며, 설계+시공단계([붙임2], 참여기술인 50점 구조)는 추후 등록 예정.'
+    },
+    배점: [
+      ['참여기술인', '60', '책임 25 + 분야별 25 + 기술지원 10 + 면접 3~6'],
+      ['유사엔지니어링 수행실적', '10', '사업자실적 8 + 수행성과 2'],
+      ['신용도', '15', '영업(업무)정지 7 + 부실벌점 5 + 재정상태 3'],
+      ['기술개발 및 투자실적', '10', '개발활용 3 + 투자 7'],
+      ['교체빈도', '5', '사업자 3 + 참여기술인 2'],
+      ['가점', '+1.2', '공사비절감 0.2 + 건설신규고용 0.3 + 청년신규고용 0.2 + 우수업체 0.5'],
+      ['감점', '상계 후 ±5 한도', '부패행위 -5 + 품질미흡통지서 -3 + 하위업체 -0.5']
+    ],
+    단장: {
+      head: ['예정공사비', '책임기술인 자격요건'],
+      rows: [
+        ['500억 이상', '공사비 300억↑ 시공단계 CM경력 1년↑ 특급기술인'],
+        ['300억 이상', '공사비 200억↑ 시공단계 CM경력 1년↑ 특급기술인'],
+        ['100억 이상', '공사비 100억↑ 시공단계 CM경력 1년↑ 고급기술인']
+      ],
+      note: '건진법 시행규칙 제35조 · 미달시 평가대상 제외(배점과 별개의 이분법 자격) · "1년↑"=1개 현장 연속 근무기간'
+    },
+    tables: [
+      { title: '책임기술인 — 직무분야 실적 (9점, 년)', head: ['15↑', '13~15', '11~13', '9~11', '9미만'], rows: [['9', '8.1', '7.2', '6.3', '5.4']] },
+      { title: '책임기술인 — 해당분야 경력 (15점, 월) · 면접 미평가', head: ['60↑', '48~60', '36~48', '24~36', '24미만'], rows: [['15', '13.5', '12', '10.5', '9']], note: '하수종말처리장은 36↑/28~36/20~28/12~20/12미만 구간 적용' },
+      { title: '책임기술인 — 해당분야 경력 (15점, 월) · 면접 평가(추정가격별)', head: ['구분', '60↑', '48~60', '36~48', '24~36', '24미만'], rows: [['20억미만', '13', '11.5', '10', '8.5', '7'], ['20~30억', '12', '10.5', '9', '7.8', '6'], ['30억↑', '11', '9.5', '8', '7.8', '5']], note: '4번째 칸 7.8은 LH 20차 원문 그대로(등차패턴 예외값)', hot: true },
+      { title: '분야별기술인 — 직무분야 실적 (9점, 년)', head: ['등급', '9점', '8점', '7점'], rows: [['특급', '12↑', '10~12', '10미만'], ['고급', '8↑', '7~8', '7미만'], ['초·중급', '3↑', '2~3', '2미만']], note: '중급 한정시(감독권한대행 외): 직무분야 24점(2↑/1~2/1미만 = 24/22/20), 해당분야경력 미평가' },
+      { title: '분야별기술인 — 해당분야 경력 (15점, 월)', head: ['등급', '15', '13.5', '12', '10.5', '9'], rows: [['특급', '48↑', '42~48', '36~42', '30~36', '30미만'], ['고급', '36↑', '30~36', '24~30', '24미만', '—'], ['초·중급', '24↑', '24미만', '—', '—', '—']], note: '면접평가시 추정가격 차감: 20억미만 -1 / 20~30억 -1.5 / 30억↑ -2' },
+      { title: '기술지원기술인 — 등급 (3점)', head: ['총공사비', '특급/고급↑', '고급이하/중급이하'], rows: [['300억↑', '특급 3', '고급이하 2'], ['300억미만', '고급이상 3', '중급이하 2']] },
+      { title: '기술지원기술인 — 해당분야 경력 (6점, 월)', head: ['48↑', '42~48', '36~42', '24~36', '24미만'], rows: [['6', '5.4', '4.8', '4.2', '3.6']], note: '현장기술경력·설계·지도점검 실적은 만점기간 50%까지만 인정(아파트 주공종 제외)' },
+      { title: '면접(발표) (3~6점)', head: ['구분', '20억미만', '20~30억', '30억↑'], rows: [['책임기술인', '2', '3', '4'], ['분야별기술인', '1', '1.5', '2']] },
+      { title: '유사실적 — 사업자 실적 (8점, 억원, 아파트)', head: ['공사규모', '8', '7.2', '6.4', '5.6', '4.8'], rows: [['1000억↑', '140↑', '120~140', '100~120', '80~100', '80미만'], ['500~1000억', '110↑', '90~110', '70~90', '50~70', '50미만'], ['300~500억', '80↑', '65~80', '50~65', '35~50', '35미만'], ['100~300억', '50↑', '40~50', '30~40', '20~30', '20미만'], ['100억미만', '20↑', '15~20', '10~15', '5~10', '5미만']], note: '산정 = (건진법 시공단계 CM실적 × 100%) + (건축·주택법 감리 × 70%)' },
+      { title: '유사실적 — 엔지니어링 수행성과 (2점)', head: ['89↑', '87~89', '85~87', '83~85', '83미만'], rows: [['2.0', '1.8', '1.6', '1.4', '1.2']] },
+      { title: '신용도 — 부실벌점 (5점)', head: ['0초과~0.5', '0.5~1', '1~2', '2~5', '5~10', '10~15', '15~20', '20↑'], rows: [['-0.1', '-0.2', '-0.3', '-0.5', '-1', '-2', '-3', '-5']], note: '주요벌점보유 추가감점: 별표8 5호나목 1)-가),2)-가),5)-가) → -5 / 1)-나),2)-나) → -3 (직전 반기)', hot: true },
+      { title: '신용도 — 재정상태 건실도 (3점)', head: ['회사채 BBB-↑', 'BBB-미만 B-↑', 'CCC+ 이하'], rows: [['3.0', '2.8', '2.0']], note: '소규모 엔지니어링(추정가격 5억미만): 3.0 / 3.0 / 2.4', hot: true },
+      { title: '기술개발 — 투자실적 (7점)', head: ['1.5%↑', '1.25~1.5', '1.0~1.25', '0.75~1.0', '0.5~0.75', '0.5미만'], rows: [['7', '6.8', '6.6', '6.4', '6.2', '6.0']] },
+      { title: '교체빈도 — 사업자 (3점)', head: ['5%미만', '5~10', '10~15', '15~20', '20↑'], rows: [['3', '2.5', '2', '1', '0']], note: '참여기술인(2점): 상주기술인 교체 1회당 -0.25 / 기술지원기술인 1회당 -0.1' },
+      { title: '가점 (+1.2)', head: ['항목', '배점', '구간'], rows: [['공사비절감 기여기술인', '+0.2', '상주 0.1×가중치 + 기술지원 0.1×가중치 (각 1인)'], ['건설기술인 신규고용', '+0.3', '1%~5% : 0.06 / 0.12 / 0.18 / 0.24 / 0.3'], ['청년건설기술인 신규고용', '+0.2', '1%~5% : 0.04 / 0.08 / 0.12 / 0.16 / 0.2'], ['우수업체', '+0.5', 'LH 발급, 1건 수주에만 적용']], note: '신규고용 가점 분리는 18차 변경 · 건설/청년 중복계산 허용', hot: true },
+      { title: '감점', head: ['항목', '배점', '내용'], rows: [['부패행위 관련자', '-5', '피해 3%초과·10억초과 -5 / 1%초과·3억초과 -3 / 1%초과·3억이하 -1'], ['품질미흡통지서 (구 경고장)', '-3', '1회당 -1.0 (최대 -3.0), PQ면접 대상은 30% → 최대 -0.9'], ['하위업체', '-0.5', 'LH 발급']], note: '20차에서 「중대한 건설사고 발생 감점규정」 삭제 · 가점-감점 상계 점수는 ±5점 한도', hot: true }
+    ],
+    주공종: [
+      ['아파트', '건진법 아파트 상주CM 100% / 건진법 외 아파트 상주감리 100% / 현장대리인·시공·공무·품질 100% (안전·관리·하도급 제외)'],
+      ['하수종말처리장', '발주청 하수·폐수종말처리장 상주CM 100% / 현장기술·설계·지도점검은 만점기간 50%까지'],
+      ['도로', '발주청 도로건설공사 + 대지(단지)조성공사 상주CM 100%'],
+      ['대지(단지)조성', '발주청 대지조성 + 아파트·공동주택 단지토목공사 상주CM 100%'],
+      ['조경', '발주청 공원·녹지·수목원·정원·숲·아파트·대지조성 조경공사 상주CM 100%']
+    ],
+    변경: [
+      '책임기술인 해당분야경력 면접평가 4번째 구간값 7.8 확정 (17차 추정 7.5/6.5 → 20차 원문 확정)',
+      '부실벌점 강화: 0점 초과부터 감점 시작 (0.1/0.2/0.3/0.5/1/2/3/5) + 주요벌점보유 추가감점 -5/-3 (18차)',
+      '신규고용 가점 분리: 단일 0.5 → 건설기술인 0.3 + 청년건설기술인 0.2 (합계 1.2 유지) (18차)',
+      '재정상태 건실도 CCC+이하 2.0 보정 (소규모 2.4)',
+      '「중대한 건설사고 발생 감점규정」 삭제 (20차 핵심개정)'
+    ]
+  }
+};
 
 var pqState = {
   personalInfo: null,
@@ -268,9 +333,64 @@ function onAgencyChange() {
 function runAnalysis() {
   if (!pqState.projects.length) { toast('먼저 경력 데이터를 불러오세요.'); return; }
   if (!pqState.agency) { toast('발주청 기준을 선택하세요.'); return; }
+  var hasStd = !!PQ_STANDARDS[pqState.agency];
+  var stdLine = hasStd
+    ? '<br><span class="badge b-rule">기준 등록됨</span> "기준 관리" 메뉴에서 ' + escapeHtml(pqState.agency) + ' 배점표·단장조건을 확인할 수 있습니다.'
+    : '<br>이 발주청의 PQ 기준표는 아직 등록되지 않았습니다. (현재 LH만 등록)';
   document.getElementById('summary-result').innerHTML =
-    '<div class="help">계산 엔진은 다음 단계에서 구현됩니다. 현재는 골격만 준비된 상태입니다.<br>선택한 기준: <strong style="color:var(--ink);">' + escapeHtml(pqState.agency) + '</strong> · 대상 프로젝트: ' + pqState.projects.length + '건</div>';
+    '<div class="help">계산 엔진(인정일수·인정율·점수 산정)은 다음 단계(3단계)에서 구현됩니다. 현재는 골격 + 발주청 기준표 등록 단계입니다.<br>선택한 기준: <strong style="color:var(--ink);">' + escapeHtml(pqState.agency) + '</strong> · 대상 프로젝트: ' + pqState.projects.length + '건' + stdLine + '</div>';
   toast(pqState.agency + ' 기준 — 계산 엔진은 다음 단계에서 연결됩니다.');
+}
+
+/* ── 기준 관리 화면 렌더 ── */
+function stdTable(t) {
+  var head = '<tr>' + t.head.map(function(h){ return '<th>' + escapeHtml(h) + '</th>'; }).join('') + '</tr>';
+  var rows = t.rows.map(function(r){ return '<tr>' + r.map(function(c){ return '<td>' + escapeHtml(c) + '</td>'; }).join('') + '</tr>'; }).join('');
+  var badge = t.hot ? ' <span class="badge b-rule">20차 변경</span>' : '';
+  var note = t.note ? '<div class="help" style="margin-top:10px;">' + escapeHtml(t.note) + '</div>' : '';
+  return '<div class="panel"><div class="panel-head"><h3>' + escapeHtml(t.title) + badge + '</h3></div><div class="panel-body"><table class="dt">' + head + rows + '</table>' + note + '</div></div>';
+}
+
+function renderStandards() {
+  var tabsBody = document.getElementById('std-tabs-body');
+  var body = document.getElementById('standards-body');
+  if (!tabsBody || !body) return;
+  var agencies = ['조달청', '건진법', 'LH', '국방부', '주택법', '지자체'];
+  tabsBody.innerHTML = '<label class="fld">등록된 발주청 기준</label><div style="display:flex; gap:8px; flex-wrap:wrap;">' +
+    agencies.map(function(a){
+      var has = !!PQ_STANDARDS[a];
+      if (has) return '<button class="btn small" onclick="showStandard(\'' + a + '\')">' + escapeHtml(a) + ' ✓</button>';
+      return '<button class="btn ghost small" disabled style="opacity:.5; cursor:default;">' + escapeHtml(a) + ' (준비중)</button>';
+    }).join('') + '</div>';
+  var first = agencies.filter(function(a){ return !!PQ_STANDARDS[a]; })[0];
+  if (first) showStandard(first);
+  else body.innerHTML = '<div class="empty">등록된 발주청 기준이 없습니다.</div>';
+}
+
+function showStandard(code) {
+  var s = PQ_STANDARDS[code];
+  var body = document.getElementById('standards-body');
+  if (!body) return;
+  if (!s) { body.innerHTML = '<div class="empty">' + escapeHtml(code) + ' 기준은 준비 중입니다.</div>'; return; }
+  var m = s.meta, html = '';
+  html += '<div class="panel"><div class="panel-head"><h3>' + escapeHtml(m.발주청) + ' — ' + escapeHtml(m.개정) + '</h3></div><div class="panel-body"><table class="dt">' +
+    '<tr><th>지침</th><td>' + escapeHtml(m.지침) + '</td></tr>' +
+    '<tr><th>시행일</th><td>' + escapeHtml(m.시행일) + '</td></tr>' +
+    '<tr><th>적격 기준점수</th><td>' + escapeHtml(m.적격) + '</td></tr>' +
+    '<tr><th>점수 산정</th><td>' + escapeHtml(m.산정) + '</td></tr>' +
+    '<tr><th>인정율 색구분</th><td>' + escapeHtml(m.인정율색) + '</td></tr>' +
+    '</table><div class="help" style="margin-top:10px;">' + escapeHtml(m.비고) + '</div></div></div>';
+  html += stdTable({ title: '배점 구조 (총 100점)', head: ['평가항목', '배점', '구성'], rows: s.배점 });
+  html += '<div class="panel"><div class="panel-head"><h3>단장조건 — 책임기술인 자격 (배점과 별개)</h3></div><div class="panel-body"><table class="dt"><tr>' +
+    s.단장.head.map(function(h){ return '<th>' + escapeHtml(h) + '</th>'; }).join('') + '</tr>' +
+    s.단장.rows.map(function(r){ return '<tr>' + r.map(function(c){ return '<td>' + escapeHtml(c) + '</td>'; }).join('') + '</tr>'; }).join('') +
+    '</table><div class="help" style="margin-top:10px;">' + escapeHtml(s.단장.note) + '</div></div></div>';
+  html += s.tables.map(stdTable).join('');
+  html += '<div class="panel"><div class="panel-head"><h3>주 공종별 100% 인정 기준 (요약)</h3></div><div class="panel-body"><table class="dt"><tr><th>공종</th><th>100% 인정 경력</th></tr>' +
+    s.주공종.map(function(r){ return '<tr><td style="white-space:nowrap;">' + escapeHtml(r[0]) + '</td><td>' + escapeHtml(r[1]) + '</td></tr>'; }).join('') + '</table></div></div>';
+  html += '<div class="panel"><div class="panel-head"><h3>17차 → 20차 변경·보정 이력</h3></div><div class="panel-body"><table class="dt">' +
+    s.변경.map(function(v, i){ return '<tr><td style="width:28px; color:var(--muted);">' + (i + 1) + '</td><td>' + escapeHtml(v) + '</td></tr>'; }).join('') + '</table></div></div>';
+  body.innerHTML = html;
 }
 
 /* ── 유의문구 (문서 15번) ── */
@@ -314,6 +434,7 @@ window.addEventListener('DOMContentLoaded', function() {
   renderNav();
   goView('view-summary');
   renderDisclaimer();
+  renderStandards();
   fillVerBadge();
   loadFromCCAP();
 });
