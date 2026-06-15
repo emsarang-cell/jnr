@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="ccap-build" content="1781539341">
+<meta name="ccap-build" content="1781541095">
 <title>건설기술인 경력증명서 AI 진단 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -1466,7 +1466,7 @@
       </a>
       <div class="app-switch">
         <a class="app-seg active" href="#" onclick="goHomeReload(event)" title="현재 화면: 경력 경정 진단">경력 경정</a>
-        <a class="app-seg" href="pq.html" title="PQ 경력분석 시스템으로 이동">경력 분석</a>
+        <a class="app-seg" href="/pq" title="PQ 경력분석 시스템으로 이동">경력 분석</a>
       </div>
       <span id="verBadge" class="ver-badge" title="현재 화면 버전"></span>
       <nav class="main-nav" id="main-nav"></nav>
@@ -6160,6 +6160,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
    RESULTS RENDERING
    ============================================================ */
 function renderResults() {
+  if (typeof r2ScheduleSave === 'function') r2ScheduleSave();
   // 대상자 정보 표시
   const piEl = document.getElementById('results-person-info');
   if (piEl) {
@@ -6636,7 +6637,118 @@ window.addEventListener('DOMContentLoaded', function() {
   updateNavActive('view-input');
   updateAuthUI();
   fillVerBadge();
+  try { r2Boot(); } catch(e) {}
 });
+
+/* ===== R2 로그인 게이트 + 클라우드 저장 (PQ와 동일 계정 SSO) ===== */
+const R2_API = 'https://jnr-data.emsarang.workers.dev';
+let r2auth = { token:null, user:null, role:null };
+let r2Mode = 'login';
+let _r2SaveT = null;
+function r2ApiUrl(p){ return R2_API.replace(/\/$/,'') + p; }
+function r2Headers(){ return { 'Content-Type':'application/json', 'Authorization':'Bearer '+r2auth.token }; }
+function r2ShowGate(){ var g=document.getElementById('r2-overlay'); if(g) g.classList.add('show'); }
+function r2HideGate(){ var g=document.getElementById('r2-overlay'); if(g) g.classList.remove('show'); }
+function r2SetTab(m){
+  r2Mode=m;
+  var lt=document.getElementById('r2-tab-login'), rt=document.getElementById('r2-tab-register'),
+      cd=document.getElementById('r2-code'), sb=document.getElementById('r2-submit');
+  if(lt) lt.classList.toggle('active', m==='login');
+  if(rt) rt.classList.toggle('active', m==='register');
+  if(cd) cd.style.display = (m==='register')?'block':'none';
+  if(sb) sb.textContent = (m==='register')?'회원가입':'로그인';
+}
+function r2Persist(token, user){
+  try{ sessionStorage.setItem('pq_token', token); }catch(e){}
+  var rem=document.getElementById('r2-remember'), au=document.getElementById('r2-autologin');
+  try{
+    if(rem && rem.checked) localStorage.setItem('pq_saved_user', user); else localStorage.removeItem('pq_saved_user');
+    if(au && au.checked){ localStorage.setItem('pq_token', token); localStorage.setItem('pq_autologin','1'); }
+    else { localStorage.removeItem('pq_token'); localStorage.removeItem('pq_autologin'); }
+  }catch(e){}
+}
+function r2Prefill(){
+  try{
+    var u=localStorage.getItem('pq_saved_user'), uf=document.getElementById('r2-user'),
+        rem=document.getElementById('r2-remember'), au=document.getElementById('r2-autologin');
+    if(u && uf){ uf.value=u; if(rem) rem.checked=true; }
+    if(localStorage.getItem('pq_autologin')==='1' && au) au.checked=true;
+  }catch(e){}
+}
+async function r2Submit(){
+  var user=(document.getElementById('r2-user').value||'').trim();
+  var pass=document.getElementById('r2-pass').value;
+  var code=document.getElementById('r2-code').value;
+  var err=document.getElementById('r2-err'); if(err) err.textContent='';
+  if(!user||!pass){ if(err) err.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  try{
+    var r=await fetch(r2ApiUrl(r2Mode==='register'?'/auth/register':'/auth/login'),{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:user,password:pass,code:code}) });
+    var d=await r.json();
+    if(!r.ok){ if(err) err.textContent=d.error||'실패했습니다.'; return; }
+    r2auth.token=d.token; r2auth.user=d.username; r2auth.role=d.role;
+    r2Persist(d.token, user);
+    r2HideGate(); r2AfterLogin();
+  }catch(e){ if(err) err.textContent='서버 연결 실패. 잠시 후 다시 시도하세요.'; }
+}
+function r2Logout(){
+  r2auth={token:null,user:null,role:null};
+  try{ sessionStorage.removeItem('pq_token'); localStorage.removeItem('pq_token'); localStorage.removeItem('pq_autologin'); }catch(e){}
+  try{ if(typeof authState!=='undefined'){ authState.loggedIn=false; authState.role=ROLE.GUEST; authState.provider=null; } }catch(e){}
+  var au=document.getElementById('r2-autologin'); if(au) au.checked=false;
+  if(typeof updateAuthUI==='function') updateAuthUI();
+  r2Prefill(); r2ShowGate();
+}
+async function r2AfterLogin(){
+  try{
+    if(typeof authState!=='undefined'){ authState.loggedIn=true; authState.role=(r2auth.role==='admin'?ROLE.ADMIN:ROLE.MEMBER); authState.email=r2auth.user; authState.provider='r2'; }
+    if(typeof updateAuthUI==='function') updateAuthUI();
+  }catch(e){}
+  await r2LoadData();
+}
+async function r2LoadData(){
+  try{
+    var r=await fetch(r2ApiUrl('/data'),{ headers:r2Headers() });
+    if(r.ok){ var d=await r.json();
+      if(d.data && d.data.ccap){
+        var c=d.data.ccap;
+        if(c.personalInfo) personalInfo = c.personalInfo;
+        if(Array.isArray(c.projects)) projects = c.projects;
+        if((!projects || projects.length===0) && typeof addEmptyRow==='function') addEmptyRow(false);
+        if(typeof renderPersonalInfo==='function') renderPersonalInfo();
+        if(typeof renderEditor==='function') renderEditor();
+        if(Array.isArray(c.results) && c.results.length){ results = c.results; if(typeof renderResults==='function') renderResults(); }
+        if(typeof toast==='function') toast('☁ 클라우드에서 저장된 분석 데이터를 불러왔습니다.', 3000);
+      }
+    }
+  }catch(e){}
+}
+function r2ScheduleSave(){
+  if(!r2auth.token) return;
+  clearTimeout(_r2SaveT); _r2SaveT=setTimeout(r2SaveData, 1200);
+}
+async function r2SaveData(){
+  if(!r2auth.token) return;
+  try{
+    var blob={};
+    try{ var rr=await fetch(r2ApiUrl('/data'),{ headers:r2Headers() }); if(rr.ok){ var dd=await rr.json(); blob=(dd&&dd.data)||{}; } }catch(e){}
+    blob.ccap = {
+      personalInfo: personalInfo,
+      projects: projects,
+      results: (typeof results!=='undefined' && results && results.length) ? results : ((blob.ccap&&blob.ccap.results)||null)
+    };
+    await fetch(r2ApiUrl('/data'),{ method:'PUT', headers:r2Headers(), body:JSON.stringify({data:blob}) });
+  }catch(e){}
+}
+async function r2Boot(){
+  try{ var bci=document.querySelector('.brand-ci'), ll=document.getElementById('r2-logo'); if(bci&&ll) ll.src=bci.src; }catch(e){}
+  var t=null; try{ t=localStorage.getItem('pq_token') || sessionStorage.getItem('pq_token'); }catch(e){}
+  if(t){ r2auth.token=t;
+    try{ var r=await fetch(r2ApiUrl('/me'),{ headers:r2Headers() }); if(r.ok){ var d=await r.json(); r2auth.user=d.username; r2auth.role=d.role; r2HideGate(); r2AfterLogin(); return; } }catch(e){}
+    r2auth.token=null;
+  }
+  r2Prefill(); r2ShowGate();
+}
+try { window.logout = r2Logout; } catch(e) {}
 
 /* 헤더 업데이트 시간 배지 — meta[name="ccap-build"]의 유닉스 타임스탬프를 KST로 표시
    (코드 업데이트 시 meta content 값을 새 타임스탬프로 갱신하면 자동 반영) */
@@ -7212,6 +7324,7 @@ function _scheduleAutoSave() {
 }
 
 function _doAutoSave() {
+  if (typeof r2ScheduleSave === 'function') r2ScheduleSave();
   const data = {
     personalInfo: personalInfo,
     projects: projects,
@@ -8311,6 +8424,45 @@ function printAllForms() {
 }
 
 </script>
+
+<style id="r2-style">
+.r2-overlay{ position:fixed; inset:0; z-index:99999; background:linear-gradient(180deg,#F8FAFC 0%,#EEF1F4 100%); display:none; align-items:center; justify-content:center; padding:20px; }
+.r2-overlay.show{ display:flex; }
+.r2-card{ background:var(--paper); border:1px solid var(--line); border-radius:18px; padding:34px 30px; width:360px; max-width:92vw; box-shadow:0 20px 60px rgba(9,9,11,.18); font-family:inherit; text-align:left; }
+.r2-card .r2-logo{ display:block; height:34px; width:auto; margin:0 auto 8px; }
+.r2-card .r2-sys{ text-align:center; font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--accent); margin-bottom:16px; }
+.r2-card h3{ margin:0 0 6px; font-size:19px; text-align:center; color:var(--ink); }
+.r2-card .r2-ld{ margin:0 0 18px; font-size:13px; color:var(--muted); line-height:1.6; text-align:center; }
+.r2-tab{ display:flex; gap:8px; margin-bottom:14px; }
+.r2-tab button{ flex:1; padding:9px 0; border:1px solid var(--line); background:var(--bg-2); color:var(--muted); border-radius:9px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; }
+.r2-tab button.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.r2-err{ color:var(--danger); font-size:12.5px; min-height:16px; margin-bottom:6px; }
+.r2-card #r2-user, .r2-card #r2-pass, .r2-card #r2-code{ width:100%; box-sizing:border-box; margin-bottom:10px; padding:11px 12px; border:1px solid var(--line); border-radius:9px; font-size:14px; font-family:inherit; color:var(--ink); }
+.r2-opt{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-2); margin:2px 0 4px; cursor:pointer; user-select:none; }
+.r2-opt input{ width:auto; margin:0; }
+.r2-opt-note{ color:var(--muted); font-size:11.5px; }
+.r2-submit{ width:100%; margin-top:8px; padding:12px 0; border:none; border-radius:9px; background:var(--accent); color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
+.r2-submit:hover{ filter:brightness(1.06); }
+</style>
+<div class="r2-overlay show" id="r2-overlay">
+  <div class="r2-card">
+    <img class="r2-logo" id="r2-logo" alt="잡매칭&렌트">
+    <div class="r2-sys">건설기술인 경력 경정</div>
+    <h3>로그인</h3>
+    <div class="r2-ld">개인 계정으로 로그인하세요. 입력·분석 데이터는 클라우드(R2)에 안전하게 저장됩니다.</div>
+    <div class="r2-tab">
+      <button id="r2-tab-login" class="active" onclick="r2SetTab('login')">로그인</button>
+      <button id="r2-tab-register" onclick="r2SetTab('register')">회원가입</button>
+    </div>
+    <div class="r2-err" id="r2-err"></div>
+    <input id="r2-user" type="text" placeholder="아이디" autocomplete="username">
+    <input id="r2-pass" type="password" placeholder="비밀번호" autocomplete="current-password" onkeydown="if(event.key==='Enter')r2Submit()">
+    <input id="r2-code" type="text" placeholder="가입 코드(필요시)" style="display:none;">
+    <label class="r2-opt"><input type="checkbox" id="r2-remember"> 아이디 저장</label>
+    <label class="r2-opt"><input type="checkbox" id="r2-autologin"> 이 기기에서 자동 로그인 <span class="r2-opt-note">(공용 PC에서는 사용하지 마세요)</span></label>
+    <button class="r2-submit" id="r2-submit" onclick="r2Submit()">로그인</button>
+  </div>
+</div>
 
 </body>
 </html>
