@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781542917">
+<meta name="pq-build" content="1781543791">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -152,6 +152,7 @@
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <button class="btn small" onclick="pqPickCert()">경력증명서 직접 업로드</button>
           <button class="btn ghost small" onclick="loadFromCCAP()">경정 진단에서 불러오기</button>
+          <button class="btn ghost small" onclick="clearLoadedData()" style="color:var(--danger);">경력 데이터 초기화</button>
         </div>
       </div>
       <div class="panel-body">
@@ -272,7 +273,15 @@
           <button class="btn small" id="hist-xlsx-btn" onclick="downloadHistoryExcel()">엑셀 다운로드</button>
         </div>
       </div>
-      <div class="panel-body" id="history-body"><div class="empty">불러오는 중…</div></div>
+      <div class="panel-body" id="history-body">
+        <div id="hist-toolbar" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:13px;">
+          <input id="hist-search" type="text" oninput="filterHistory(this.value)" placeholder="대상자 · 발주청 · 등급 · 규모 검색" style="flex:1;min-width:200px;padding:8px 11px;border:1px solid var(--line-2);border-radius:8px;font-size:13px;">
+          <label class="help" style="margin:0;display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="hist-all" onchange="histToggleAll(this.checked)"> 전체선택</label>
+          <button class="btn ghost small" onclick="deleteHistorySelected()">선택 삭제</button>
+          <button class="btn ghost small" style="color:var(--danger);" onclick="deleteHistoryAll()">전체 삭제</button>
+        </div>
+        <div id="history-table"><div class="empty">불러오는 중…</div></div>
+      </div>
     </div>
   </section>
 
@@ -282,9 +291,9 @@
 <div class="login-overlay" id="login-overlay">
   <div class="login-card">
     <img class="login-logo" id="login-logo" alt="잡매칭&렌트">
-    <div class="login-sys">건설기술인 PQ 경력분석</div>
+    <div class="login-sys">건설기술인 경력 분석</div>
     <h3>로그인</h3>
-    <div class="ld">개인 계정으로 로그인하세요. 경력·분석 데이터는 클라우드(R2)에 안전하게 저장됩니다.</div>
+    <div class="ld">개인 계정으로 로그인하세요.</div>
     <div class="login-tab">
       <button id="tab-login" class="active" onclick="setAuthTab('login')">로그인</button>
       <button id="tab-register" onclick="setAuthTab('register')">회원가입</button>
@@ -541,6 +550,23 @@ function onAgencyChange() {
 
 /* ── 계산 엔진 (3단계): 인정일수·중복제거·인정율·구간점수·단장조건 ── */
 function parseYMD(v){ if(!v) return null; var t=String(v).replace(/[^0-9]/g,' ').trim().split(/\s+/); if(t.length<3) return null; var y=+t[0],m=+t[1],d=+t[2]; if(!y||!m||!d) return null; return new Date(y,m-1,d); }
+function _pad2(n){ n=+n; return (n<10?'0':'')+n; }
+/* 참여기간 정규화: 일자가 없으면(연·월만) 시작은 그 달의 말일, 종료는 그 달의 1일로 산정 */
+function normDate(s, kind){
+  if(s==null) return s;
+  var t=String(s).trim(); if(!t) return t;
+  t=t.replace(/[년월\/\-\s]/g,'.').replace(/일/g,'').replace(/\.+/g,'.').replace(/^\.|\.$/g,'');
+  var full=t.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})$/);
+  if(full){ return full[1]+'.'+_pad2(full[2])+'.'+_pad2(full[3]); }
+  var ym=t.match(/^(\d{4})\.(\d{1,2})$/);
+  if(ym){ var y=+ym[1], mo=+ym[2];
+    if(kind==='end') return y+'.'+_pad2(mo)+'.01';
+    var last=new Date(y, mo, 0).getDate(); return y+'.'+_pad2(mo)+'.'+_pad2(last);
+  }
+  return t;
+}
+function normalizeProjectDates(p){ if(!p) return; p.startDate=normDate(p.startDate,'start'); p.endDate=normDate(p.endDate,'end'); }
+function _amt(v){ if(v==null||v==='') return ''; var n=String(v).replace(/[^0-9.]/g,''); if(n==='') return escapeHtml(String(v)); var num=Number(n); return isNaN(num)? escapeHtml(String(v)) : num.toLocaleString('ko-KR'); }
 function daysInc(a,b){ var x=parseYMD(a),y=parseYMD(b); if(!x||!y||y<x) return 0; return Math.round((y-x)/864e5)+1; }
 function mergeDays(list){ var iv=[]; for(var i=0;i<list.length;i++){ var a=parseYMD(list[i][0]),b=parseYMD(list[i][1]); if(a&&b&&b>=a) iv.push([a.getTime(),b.getTime()]); } iv.sort(function(p,q){return p[0]-q[0];}); if(!iv.length) return 0; var tot=0,cs=iv[0][0],ce=iv[0][1]; for(var j=1;j<iv.length;j++){ if(iv[j][0]<=ce+864e5){ if(iv[j][1]>ce) ce=iv[j][1]; } else { tot+=Math.round((ce-cs)/864e5)+1; cs=iv[j][0]; ce=iv[j][1]; } } return tot+Math.round((ce-cs)/864e5)+1; }
 function pickPt(br,val){ if(!br) return null; for(var i=0;i<br.length;i++){ var b=br[i]; if(val>=b[0] && (b[1]==null||val<b[1])) return b[2]; } return null; }
@@ -611,13 +637,13 @@ function renderProjectsView(a){
       + '</div>'
     : '';
   var rateOpts=function(rate){ var base=[100,70,50,0]; if(base.indexOf(+rate)<0){ base.push(+rate); base.sort(function(p,q){return q-p;}); } return base.map(function(v){return '<option value="'+v+'"'+(rate==v?' selected':'')+'>'+v+'%</option>';}).join(''); };
-  var head='<tr><th>#</th><th>사업명</th><th>기간</th><th>일수</th><th>공사종류</th><th>담당업무</th><th>인정율</th><th>인정일수</th></tr>';
+  var head='<tr><th>#</th><th>사업명</th><th>기간</th><th>일수</th><th>직무분야</th><th>전문분야</th><th>책임정도</th><th>담당업무</th><th>공사금액<br>(백만원)</th><th>인정율</th><th>인정일수</th></tr>';
   var body=a.rows.map(function(x){
     var sel='<select onchange="setRate('+x.i+',this.value)" style="padding:4px 6px;font-size:12px;">'+rateOpts(x.rate)+'</select>';
     var reco=(pqState.aiReco && pqState.aiReco[x.i]) || null;
     var badge=reco ? '<div style="margin-top:5px;"><span class="badge" style="background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);">AI 추천 '+reco.rate+'% · 검토필요</span></div>' : '';
     var reasonHtml=(reco && reco.reason) ? '<div class="help" style="margin:5px 0 0;font-size:11.5px;line-height:1.5;max-width:340px;">📌 '+escapeHtml(reco.reason)+'</div>' : '';
-    return '<tr><td>'+(x.i+1)+'</td><td>'+escapeHtml(x.p.name||'')+'</td><td style="white-space:nowrap;">'+escapeHtml((x.p.startDate||'')+' ~ '+(x.p.endDate||''))+'</td><td>'+x.days+'일</td><td>'+escapeHtml(x.p.workType||'')+'</td><td>'+escapeHtml(x.p.duty||x.p.field||'')+'</td><td>'+sel+badge+reasonHtml+'</td><td>'+x.w+'일</td></tr>';
+    return '<tr><td>'+(x.i+1)+'</td><td>'+escapeHtml(x.p.name||'')+'</td><td style="white-space:nowrap;">'+escapeHtml((x.p.startDate||'')+' ~ '+(x.p.endDate||''))+'</td><td>'+x.days+'일</td><td>'+escapeHtml(x.p.field||'')+'</td><td>'+escapeHtml(x.p.specialty||'')+'</td><td>'+escapeHtml(x.p.position||'')+'</td><td>'+escapeHtml(x.p.duty||'')+'</td><td style="white-space:nowrap;text-align:right;">'+_amt(x.p.amount)+'</td><td>'+sel+badge+reasonHtml+'</td><td>'+x.w+'일</td></tr>';
   }).join('');
   var note='<div class="help" style="margin-top:12px;">인정율을 바꾸면 해당분야 경력·점수가 즉시 다시 계산됩니다. AI 추천값은 발주청 해당분야 판정 규칙에 근거한 <strong>사전 검토자료</strong>이며 최종 인정여부를 단정하지 않습니다. 인정율을 직접 조정하면 해당 행의 “검토필요” 표시는 사라집니다(검토 완료로 간주). 뱃지에 마우스를 올리면 판정 근거가 표시됩니다.</div>';
   var distMap={}; a.rows.forEach(function(x){ var k=(x.rate!=null?x.rate:100); distMap[k]=(distMap[k]||0)+1; });
@@ -625,7 +651,7 @@ function renderProjectsView(a){
   var aiCnt=(pqState.aiReco||[]).filter(function(r){return r;}).length;
   var distChips=distKeys.map(function(k){ return '<span class="badge" style="background:var(--bg-2);border:1px solid var(--line-2);color:var(--ink-2);margin-right:6px;">인정율 '+k+'%: '+distMap[k]+'건</span>'; }).join('');
   var distHtml='<div style="margin:2px 0 14px;padding:11px 13px;background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius);"><div style="font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:7px;">인정률 매칭 내역 — 총 '+a.rows.length+'건'+(aiCnt? ' · AI 자동판정 '+aiCnt+'건':'')+'</div>'+distChips+'<div class="help" style="margin:8px 0 0;">각 프로젝트의 인정율(100/70/50/0%)과 AI 판정 근거는 아래 표에서 확인하세요. 인정일수 = 일수 × 인정율.</div></div>';
-  document.getElementById('view-projects').querySelector('.panel-body').innerHTML=aiBtn+distHtml+'<table class="dt">'+head+body+'</table>'+note;
+  document.getElementById('view-projects').querySelector('.panel-body').innerHTML=aiBtn+distHtml+'<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="dt" style="min-width:840px;">'+head+body+'</table></div>'+note;
 }
 
 function renderShortageView(a){
@@ -700,7 +726,7 @@ function buildRateRuleText(std){
 function buildRatePrompt(std){
   var rule=buildRateRuleText(std);
   var list=pqState.projects.map(function(p,i){
-    return i+'. 사업명="'+(p.name||'')+'" / 공사종류="'+(p.workType||'')+'" / 직무분야="'+(p.field||'')+'" / 세부="'+(p.specialty||'')+'" / 담당업무="'+(p.duty||'')+'" / 책임정도(직위)="'+(p.position||'')+'" / 발주처="'+(p.owner||'')+'"';
+    return i+'. 사업명="'+(p.name||'')+'" / 공종(시설)="'+(p.workType||'')+'" / 직무분야="'+(p.field||'')+'" / 전문분야="'+(p.specialty||'')+'" / 담당업무="'+(p.duty||'')+'" / 책임정도="'+(p.position||'')+'" / 공사금액(백만원)="'+(p.amount||'')+'" / 발주처="'+(p.owner||'')+'"';
   }).join('\n');
   return [
     '당신은 한국 건설기술인 PQ(입찰참가자격사전심사) 경력의 \'해당분야 인정율\' 판정을 돕는 보조 도구입니다.',
@@ -778,16 +804,17 @@ var PQ_CERT_PROMPT = [
   '다음은 한국 건설기술인협회가 발급한 건설기술인 경력증명서(이미지 또는 PDF)입니다.',
   '문서에서 대상자 정보, 모든 참여사업(경력), 보유 자격(자격증), 교육 이수 내역, 학력을 정확히 읽어 JSON으로 추출하세요.',
   '문서에 해당 항목(자격/교육/학력 등)이 없으면 그 배열은 빈 배열([]) 또는 null로 둡니다.',
-  '[참여사업(projects)] 각 항목에서(없으면 빈 문자열):',
-  '- name: 사업명/공사명',
-  '- startDate, endDate: 근무기간 시작일/종료일 (반드시 YYYY.MM.DD 형식)',
+  '[참여사업(projects)] 건설기술인 경력증명서의 "참여사업(경력)" 표를 행 단위로 정확히 읽고, 각 열을 아래 키에 정확히 매핑하세요(없으면 빈 문자열). 직무분야·전문분야·책임정도·담당업무는 서로 다른 열이므로 절대 섞지 마세요.',
+  '- name: 사업명(공사명/용역명)',
+  '- startDate, endDate: 참여기간 시작/종료. 원본에 "일"까지 있으면 YYYY.MM.DD, "연.월"만 있고 일자가 없으면 일을 임의로 만들지 말고 "YYYY.MM" 형식 그대로 두세요(예: 1982.03).',
   '- owner: 발주청/발주자',
-  '- workType: 공사종류/공종',
-  '- field: 직무분야',
-  '- specialty: 세부공종 또는 용도(있으면)',
-  '- workplace: 근무처/소속',
-  '- position: 직위 또는 책임정도(상주/책임기술인 등)',
-  '- duty: 담당업무',
+  '- workType: 공종/시설종류 — 사업의 종류나 시설 용도(예: 아파트, 도로, 하수처리장, 업무시설, 판매시설, 묘지 등). 사업명에서 유추 가능하면 적되 불확실하면 비움.',
+  '- field: 직무분야 — 경력증명서의 "직무분야" 열 값 (예: 토목, 건축, 기계, 전기, 조경 등)',
+  '- specialty: 전문분야 — "전문분야" 열 값 (직무분야보다 세부, 예: 토목구조, 건축구조, 토질및기초 등)',
+  '- position: 책임정도 — "책임정도" 열 값 (예: 상주/비상주, 책임기술자/참여기술자/현장대리인 등)',
+  '- duty: 담당업무 — "담당업무" 열 값 (실제 수행 업무. 직무분야 값을 여기에 넣지 말 것)',
+  '- amount: 공사(용역)금액 — "공사(용역)금액" 열 값(단위 백만원). 숫자만(콤마 제거) 추출, 없으면 빈 문자열',
+  '- workplace: 근무처/소속회사(있으면)',
   '[보유 자격(qualifications)] 자격증/기술자격 항목마다(없으면 빈 문자열):',
   '- name: 자격종목명 (예: 토목기사, 건축시공기술사 등)',
   '- grade: 등급/종류 (기술사·기사·산업기사 등, 있으면)',
@@ -800,10 +827,10 @@ var PQ_CERT_PROMPT = [
   '- date: 이수일 또는 기간 (있으면)',
   '[학력(academic)] (있으면): {"school":"학교명","major":"전공","degree":"학위/졸업구분","gradDate":"졸업일"} (없으면 null)',
   '[대상자(personalInfo)]: {"name":"성명","grade":"보유 기술등급(특급/고급 등, 있으면)","birth":"생년(있으면)"}',
-  '날짜 표기가 어떻든 반드시 연.월.일 순서의 YYYY.MM.DD로 변환하세요.',
+  '날짜는 항상 연.월(.일) 순서로 적으세요. 일이 있으면 YYYY.MM.DD, 일이 없으면 YYYY.MM (일자를 추측해서 채우지 말 것).',
   '문서에 적힌 내용만 사용하고 임의로 만들지 마세요. 읽기 어려운 값은 빈 문자열로 둡니다.',
   '결과는 순수 JSON 객체 하나만 반환하세요. 코드펜스나 다른 설명은 절대 붙이지 마세요.',
-  '형식: {"personalInfo":{"name":"","grade":"","birth":""},"projects":[{"name":"","startDate":"","endDate":"","owner":"","workType":"","field":"","specialty":"","workplace":"","position":"","duty":""}],"qualifications":[{"name":"","grade":"","acquireDate":"","regNo":""}],"educations":[{"name":"","org":"","hours":"","date":""}],"academic":null}'
+  '형식: {"personalInfo":{"name":"","grade":"","birth":""},"projects":[{"name":"","startDate":"","endDate":"","owner":"","workType":"","field":"","specialty":"","position":"","duty":"","amount":"","workplace":""}],"qualifications":[{"name":"","grade":"","acquireDate":"","regNo":""}],"educations":[{"name":"","org":"","hours":"","date":""}],"academic":null}'
 ].join('\n');
 async function pqHandleCertFile(file){
   var prog=document.getElementById('cert-progress');
@@ -829,6 +856,7 @@ async function pqHandleCertFile(file){
     if(!Array.isArray(projects) || !projects.length) throw new Error('경력 항목을 추출하지 못했습니다. 더 선명한 파일(특히 이미지)로 다시 시도하세요.');
     pqState.personalInfo = (out.personalInfo) || pqState.personalInfo || null;
     pqState.projects = projects;
+    try{ pqState.projects.forEach(normalizeProjectDates); }catch(e){}
     pqState.quals = Array.isArray(out.qualifications)? out.qualifications : [];
     pqState.edu = Array.isArray(out.educations)? out.educations : [];
     pqState.academic = (out.academic && typeof out.academic==='object')? out.academic : null;
@@ -937,6 +965,18 @@ function renderAuthbar(){
   var b=document.getElementById('authbar'); if(!b) return;
   if(auth.user){ b.style.display='block'; b.innerHTML='👤 '+escapeHtml(auth.user)+' ('+escapeHtml(auth.role)+') · <a onclick="logout()">로그아웃</a>'; }
   else b.style.display='none';
+}
+async function clearLoadedData(){
+  if(!confirm('불러온 경력 데이터(프로젝트·자격·교육)를 모두 초기화합니다.\n경정 진단과 공유되는 경력 데이터도 함께 비워지며, 클라우드(R2)에서도 삭제됩니다.\n계속하시겠습니까?')) return;
+  pqState.personalInfo=null; pqState.projects=[]; pqState.rates=[]; pqState.aiReco=[];
+  pqState.quals=[]; pqState.edu=[]; pqState.academic=null; pqState.analyzed=false; pqState.loadedFrom=null;
+  var ds=document.getElementById('data-status');
+  if(ds) ds.innerHTML='아직 불러온 경력 데이터가 없습니다. 위에서 <strong>경력증명서를 직접 업로드</strong>하거나, "경정 진단에서 불러오기"로 경정 진단 시스템의 경력을 가져올 수 있습니다.';
+  var sr=document.getElementById('summary-result'); if(sr) sr.innerHTML='<div class="help">경력 데이터를 불러오고 발주청 기준을 선택한 뒤 분석을 실행하세요.</div>';
+  var pv=document.getElementById('view-projects'); if(pv){ var pb=pv.querySelector('.panel-body'); if(pb) pb.innerHTML='<div class="empty">불러온 경력이 없습니다. 경력을 불러온 뒤 분석을 실행하세요.</div>'; }
+  var rb=document.getElementById('report-body'); if(rb) rb.innerHTML='<div class="empty">먼저 경력증명서를 업로드하거나 경력을 불러온 뒤 발주청을 선택해 분석을 실행하세요.</div>';
+  try{ await saveCloud(); }catch(e){}
+  toast('경력 데이터를 초기화했습니다.');
 }
 function clearPQState(){
   pqState.personalInfo=null; pqState.projects=[]; pqState.rates=[]; pqState.aiReco=[];
@@ -1052,29 +1092,41 @@ function _histHValText(r){
 }
 function _histPtText(v){ return (v==null? '-' : v+'점'); }
 async function loadAnalysisHistory(){
-  var host=document.getElementById('history-body'); if(!host) return;
-  if(!CLOUD_ON||!auth.token){ _histCache=[]; host.innerHTML='<div class="empty">로그인 후 이용할 수 있습니다.</div>'; renderHistCount(); return; }
+  var host=document.getElementById('history-table'); if(!host) return;
+  var tb=document.getElementById('hist-toolbar');
+  if(!CLOUD_ON||!auth.token){ _histCache=[]; host.innerHTML='<div class="empty">로그인 후 이용할 수 있습니다.</div>'; renderHistCount(); if(tb) tb.style.display='none'; return; }
   host.innerHTML='<div class="empty">불러오는 중…</div>';
   try{
     var r=await fetch(apiUrl('/data'),{ headers:authHeaders() });
     var arr=[];
     if(r.ok){ var d=await r.json(); arr=(d&&d.data&&Array.isArray(d.data.analyses))? d.data.analyses : []; }
     _histCache=arr.slice();
-    renderHistory(arr);
+    renderHistory();
   }catch(e){ host.innerHTML='<div class="empty">이력을 불러오지 못했습니다. 잠시 후 다시 시도하세요.</div>'; }
 }
 function renderHistCount(){
   var c=document.getElementById('hist-count'); if(c) c.textContent=_histCache.length? '· 총 '+_histCache.length+'건' : '';
 }
-function renderHistory(arr){
-  var host=document.getElementById('history-body'); if(!host) return;
+var _histFilter='';
+function _histMatch(r,q){
+  if(!q) return true; q=q.toLowerCase();
+  return [r.name,r.agency,r.grade,r.subgrade,r.cost,r.loadedFrom].some(function(v){ return String(v||'').toLowerCase().indexOf(q)>=0; });
+}
+function renderHistory(){
+  var host=document.getElementById('history-table'); if(!host) return;
+  var tb=document.getElementById('hist-toolbar');
   renderHistCount();
-  if(!arr || !arr.length){ host.innerHTML='<div class="empty">아직 저장된 분석 이력이 없습니다. 발주청을 선택하고 PQ 산정을 실행하면 이력이 자동으로 쌓입니다.</div>'; return; }
-  var rev=arr.slice().reverse(); // 최신순
-  var head='<tr><th>분석시각</th><th>대상자</th><th>발주청</th><th>등급</th><th>규모</th><th>대상</th><th>직무경력</th><th>해당분야경력</th><th>직무점수</th><th>해당점수</th></tr>';
-  var body=rev.map(function(r){
+  var all=_histCache||[];
+  if(!all.length){ if(tb) tb.style.display='none'; host.innerHTML='<div class="empty">아직 저장된 분석 이력이 없습니다. 발주청을 선택하고 PQ 산정을 실행하면 이력이 자동으로 쌓입니다.</div>'; return; }
+  if(tb) tb.style.display='flex';
+  var allCb=document.getElementById('hist-all'); if(allCb) allCb.checked=false;
+  var list=[]; for(var i=all.length-1;i>=0;i--){ if(_histMatch(all[i],_histFilter)) list.push({r:all[i],idx:i}); }
+  if(!list.length){ host.innerHTML='<div class="empty">검색 결과가 없습니다. (전체 '+all.length+'건 중 0건)</div>'; return; }
+  var head='<tr><th style="width:34px;"></th><th>분석시각</th><th>대상자</th><th>발주청</th><th>등급</th><th>규모</th><th>대상</th><th>직무경력</th><th>해당분야경력</th><th>직무점수</th><th>해당점수</th></tr>';
+  var body=list.map(function(o){ var r=o.r;
     var sub=(r.subgrade&&r.grade!=='기술지원')? '('+escapeHtml(r.subgrade)+')' : '';
     return '<tr>'
+      +'<td><input type="checkbox" class="hist-cb" data-idx="'+o.idx+'"></td>'
       +'<td style="white-space:nowrap;">'+_histFmtAt(r.at)+'</td>'
       +'<td>'+escapeHtml(r.name||'-')+'</td>'
       +'<td>'+escapeHtml(r.agency||'-')+'</td>'
@@ -1087,8 +1139,29 @@ function renderHistory(arr){
       +'<td>'+_histPtText(r.hPt)+'</td>'
       +'</tr>';
   }).join('');
-  var note='<div class="help" style="margin-top:12px;">최신순으로 표시됩니다. 해당분야 경력 단위는 발주청 기준에 따릅니다(LH=개월, 조달청=년). 점수가 "-"인 경우 기준 미확보 또는 해당없음입니다. 본 이력은 사전 검토자료입니다.</div>';
+  var note='<div class="help" style="margin-top:12px;">'+(_histFilter?'검색 '+list.length+'건 / 전체 '+all.length+'건 · ':'')+'최신순으로 표시됩니다. 해당분야 경력 단위는 발주청 기준(LH=개월, 조달청=년). 점수가 "-"인 경우 기준 미확보 또는 해당없음입니다. 본 이력은 사전 검토자료입니다.</div>';
   host.innerHTML='<table class="dt">'+head+body+'</table>'+note;
+}
+function filterHistory(v){ _histFilter=v||''; renderHistory(); }
+function histToggleAll(ck){ var cbs=document.querySelectorAll('#history-table .hist-cb'); for(var i=0;i<cbs.length;i++) cbs[i].checked=ck; }
+async function _histPutAnalyses(arr){
+  var blob={};
+  try{ var rr=await fetch(apiUrl('/data'),{ headers:authHeaders() }); if(rr.ok){ var dd=await rr.json(); blob=(dd&&dd.data)||{}; } }catch(e){}
+  blob.analyses=arr;
+  await fetch(apiUrl('/data'),{ method:'PUT', headers:authHeaders(), body:JSON.stringify({data:blob}) });
+}
+async function deleteHistorySelected(){
+  var cbs=document.querySelectorAll('#history-table .hist-cb'), idxs={}, n=0, i;
+  for(i=0;i<cbs.length;i++){ if(cbs[i].checked){ idxs[+cbs[i].getAttribute('data-idx')]=1; n++; } }
+  if(!n){ toast('삭제할 항목을 선택하세요.'); return; }
+  if(!confirm('선택한 '+n+'건의 분석 이력을 삭제할까요?')) return;
+  var kept=(_histCache||[]).filter(function(_x,i2){ return !idxs[i2]; });
+  try{ await _histPutAnalyses(kept); _histCache=kept.slice(); renderHistory(); toast(n+'건을 삭제했습니다.'); }catch(e){ toast('삭제 중 오류가 발생했습니다.'); }
+}
+async function deleteHistoryAll(){
+  if(!(_histCache&&_histCache.length)){ toast('삭제할 이력이 없습니다.'); return; }
+  if(!confirm('분석 이력 전체('+_histCache.length+'건)를 삭제할까요? 되돌릴 수 없습니다.')) return;
+  try{ await _histPutAnalyses([]); _histCache=[]; _histFilter=''; var s=document.getElementById('hist-search'); if(s) s.value=''; renderHistory(); toast('분석 이력을 전체 삭제했습니다.'); }catch(e){ toast('삭제 중 오류가 발생했습니다.'); }
 }
 function downloadHistoryExcel(){
   if(typeof XLSX==='undefined'){ toast('엑셀 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.'); return; }
@@ -1169,16 +1242,21 @@ function buildReportHtml(a){
   var rows=a? a.rows : _rptRows();
   html+='<div '+sec+'>3. 프로젝트별 인정률 내역 ('+rows.length+'건)</div>';
   if(rows.length){
+    var tdR='style="padding:7px 9px;border:1px solid #E4E4E7;vertical-align:top;font-size:12px;text-align:right;white-space:nowrap;"';
     var rb=rows.map(function(x){ var reco=(P.aiReco&&P.aiReco[x.i])||null;
       return '<tr><td '+td+'>'+(x.i+1)+'</td><td '+td+'>'+escapeHtml(x.p.name||'')+'</td>'
         +'<td '+tdNw+'>'+escapeHtml((x.p.startDate||'')+'~'+(x.p.endDate||''))+'</td>'
-        +'<td '+td+'>'+x.days+'일</td><td '+td+'>'+escapeHtml(x.p.workType||'')+'</td>'
-        +'<td '+td+'>'+escapeHtml(x.p.duty||x.p.field||'')+'</td>'
+        +'<td '+td+'>'+x.days+'일</td>'
+        +'<td '+td+'>'+escapeHtml(x.p.field||'')+'</td>'
+        +'<td '+td+'>'+escapeHtml(x.p.specialty||'')+'</td>'
+        +'<td '+td+'>'+escapeHtml(x.p.position||'')+'</td>'
+        +'<td '+td+'>'+escapeHtml(x.p.duty||'')+'</td>'
+        +'<td '+tdR+'>'+_amt(x.p.amount)+'</td>'
         +'<td '+tdRate+'>'+x.rate+'%</td><td '+td+'>'+x.w+'일</td>'
         +'<td '+tdRs+'>'+(reco?escapeHtml(reco.reason||('AI 추천 '+reco.rate+'%')):'-')+'</td></tr>';
     }).join('');
-    html+='<table style="width:100%;border-collapse:collapse;font-size:12px;"><tr>'
-      +'<th '+th+'>#</th><th '+th+'>사업명</th><th '+th+'>기간</th><th '+th+'>일수</th><th '+th+'>공종</th><th '+th+'>담당업무</th><th '+th+'>인정율</th><th '+th+'>인정일수</th><th '+th+'>판정 근거</th></tr>'+rb+'</table>';
+    html+='<div style="overflow-x:auto;"><table style="width:100%;min-width:920px;border-collapse:collapse;font-size:12px;"><tr>'
+      +'<th '+th+'>#</th><th '+th+'>사업명</th><th '+th+'>기간</th><th '+th+'>일수</th><th '+th+'>직무분야</th><th '+th+'>전문분야</th><th '+th+'>책임정도</th><th '+th+'>담당업무</th><th '+th+'>공사금액<br>(백만원)</th><th '+th+'>인정율</th><th '+th+'>인정일수</th><th '+th+'>판정 근거</th></tr>'+rb+'</table></div>';
   } else { html+='<div '+muted+'>등록된 프로젝트가 없습니다.</div>'; }
   html+='<div '+sec+'>4. 보유 자격</div>';
   if(P.quals&&P.quals.length){
