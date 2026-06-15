@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781529045">
+<meta name="pq-build" content="1781529899">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <style>
@@ -84,6 +84,19 @@
   .b-ai { background: #FEF3C7; color: #B45309; }
   .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 13.5px; z-index: 200; opacity: 0; transition: opacity .2s; pointer-events: none; }
   .toast.show { opacity: 1; }
+  .authbar { position: fixed; top: 10px; right: 14px; z-index: 60; font-size: 12.5px; color: var(--ink-2); background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; display: none; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .authbar a { color: var(--accent); cursor: pointer; font-weight: 600; }
+  .login-overlay { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; }
+  .login-overlay.show { display: flex; }
+  .login-card { background: var(--paper); border-radius: 16px; padding: 30px 28px; width: 340px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  .login-card h3 { margin: 0 0 6px; font-size: 18px; }
+  .login-card .ld { margin: 0 0 18px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .login-card input { width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+  .login-card .btn { width: 100%; justify-content: center; margin-top: 6px; }
+  .login-err { color: #c0392b; font-size: 12.5px; min-height: 16px; margin-bottom: 4px; }
+  .login-tab { display: flex; gap: 8px; margin-bottom: 14px; }
+  .login-tab button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--paper); cursor: pointer; font-family: inherit; font-size: 13px; }
+  .login-tab button.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-border); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -213,6 +226,22 @@
 
 </main>
 
+<div class="authbar" id="authbar"></div>
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <h3>건설기술인 PQ 시스템</h3>
+    <div class="ld">개인 계정으로 로그인하세요. 경력·분석 데이터는 클라우드(R2)에 안전하게 저장됩니다.</div>
+    <div class="login-tab">
+      <button id="tab-login" class="active" onclick="setAuthTab('login')">로그인</button>
+      <button id="tab-register" onclick="setAuthTab('register')">회원가입</button>
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <input id="lg-user" placeholder="아이디" autocomplete="username">
+    <input id="lg-pass" type="password" placeholder="비밀번호" autocomplete="current-password">
+    <input id="lg-code" placeholder="가입 코드(필요시)" style="display:none;">
+    <button class="btn" id="lg-submit" onclick="submitAuth()">로그인</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -223,6 +252,11 @@
    ============================================================ */
 var PQ_STORAGE = 'pq_standards_v1';
 var CCAP_KEYS = ['ccap_data_v1', 'ccap_autosave_v1'];
+
+/* ── 클라우드(개인 로그인 + R2 저장) ── */
+var DATA_API = 'https://jnr-data.your-name.workers.dev'; // ★ 배포 후 본인 Worker 주소로 교체 ★
+var CLOUD_ON = DATA_API.indexOf('your-name') === -1;     // 주소 교체 전에는 로컬 모드로 동작
+var auth = { token: null, user: null, role: null };
 
 /* ── 발주청 PQ 기준표 (앱 내장 / 단일 HTML) ──
    LH: 20차개정(제3594호, 2026-05-19 시행) [붙임1] 시공단계 기준 */
@@ -546,6 +580,7 @@ function runAnalysis(silent){
   var a=computeAnalysis();
   renderSummary(a); renderProjectsView(a); renderShortageView(a);
   pqState.analyzed=true;
+  scheduleSave();
   if(!silent) toast(pqState.agency+' 기준으로 산정했습니다.');
 }
 function setRate(i,v){ pqState.rates[i]=+v; if(pqState.analyzed) runAnalysis(true); }
@@ -601,6 +636,90 @@ function showStandard(code) {
   body.innerHTML = html;
 }
 
+/* ── 클라우드: 로그인 + R2 저장/불러오기 ── */
+var authMode = 'login';
+function apiUrl(pp){ return DATA_API.replace(/\/$/,'') + pp; }
+function authHeaders(){ return { 'Content-Type':'application/json', 'Authorization':'Bearer '+auth.token }; }
+function setAuthTab(m){
+  authMode=m;
+  document.getElementById('tab-login').classList.toggle('active', m==='login');
+  document.getElementById('tab-register').classList.toggle('active', m==='register');
+  document.getElementById('lg-code').style.display = (m==='register')?'block':'none';
+  document.getElementById('lg-submit').textContent = (m==='register')?'회원가입':'로그인';
+  document.getElementById('login-err').textContent='';
+}
+function showLogin(){ document.getElementById('login-overlay').classList.add('show'); }
+function hideLogin(){ document.getElementById('login-overlay').classList.remove('show'); }
+function renderAuthbar(){
+  var b=document.getElementById('authbar'); if(!b) return;
+  if(auth.user){ b.style.display='block'; b.innerHTML='👤 '+escapeHtml(auth.user)+' ('+escapeHtml(auth.role)+') · <a onclick="logout()">로그아웃</a>'; }
+  else b.style.display='none';
+}
+function logout(){ auth={token:null,user:null,role:null}; try{ sessionStorage.removeItem('pq_token'); }catch(e){} renderAuthbar(); showLogin(); }
+async function submitAuth(){
+  var user=document.getElementById('lg-user').value.trim();
+  var pass=document.getElementById('lg-pass').value;
+  var code=document.getElementById('lg-code').value;
+  var err=document.getElementById('login-err'); err.textContent='';
+  if(!user||!pass){ err.textContent='아이디와 비밀번호를 입력하세요.'; return; }
+  try{
+    var r=await fetch(apiUrl(authMode==='register'?'/auth/register':'/auth/login'),{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:user,password:pass,code:code}) });
+    var d=await r.json();
+    if(!r.ok){ err.textContent=d.error||'실패했습니다.'; return; }
+    auth.token=d.token; auth.user=d.username; auth.role=d.role;
+    try{ sessionStorage.setItem('pq_token', d.token); }catch(e){}
+    hideLogin(); afterLogin();
+  }catch(e){ err.textContent='서버 연결 실패. Worker 주소(DATA_API)를 확인하세요.'; }
+}
+async function afterLogin(){
+  renderAuthbar();
+  await loadStandardsCloud();
+  await loadDataCloud();
+  if(auth.role==='관리자') showAdminStdBtn();
+}
+async function loadStandardsCloud(){
+  try{ var r=await fetch(apiUrl('/standards'),{ headers:authHeaders() }); if(r.ok){ var d=await r.json(); if(d.standards){ PQ_STANDARDS=d.standards; renderStandards(); refreshCostOptions(); } } }catch(e){}
+}
+async function loadDataCloud(){
+  try{
+    var r=await fetch(apiUrl('/data'),{ headers:authHeaders() });
+    if(r.ok){ var d=await r.json();
+      if(d.data && d.data.ccap){
+        pqState.personalInfo=d.data.ccap.personalInfo||null;
+        pqState.projects=d.data.ccap.projects||[];
+        pqState.rates=(d.data.pq&&d.data.pq.rates)||pqState.projects.map(function(){return 100;});
+        var el=document.getElementById('data-status');
+        var nm=(pqState.personalInfo&&(pqState.personalInfo.name||pqState.personalInfo['성명']))||'(이름 없음)';
+        el.innerHTML='<strong style="color:var(--ink);">클라우드에서 경력 데이터를 불러왔습니다.</strong><br>대상자: '+escapeHtml(nm)+' · 프로젝트 '+pqState.projects.length+'건';
+        return;
+      }
+    }
+  }catch(e){}
+  loadFromCCAP();
+}
+var _saveT=null;
+function scheduleSave(){ if(!CLOUD_ON||!auth.token) return; clearTimeout(_saveT); _saveT=setTimeout(saveCloud,1200); }
+async function saveCloud(){
+  if(!CLOUD_ON||!auth.token) return;
+  var blob={ ccap:{ personalInfo:pqState.personalInfo, projects:pqState.projects }, pq:{ agency:pqState.agency, grade:pqState.grade, subgrade:pqState.subgrade, cost:pqState.cost, interview:pqState.interview, rates:pqState.rates } };
+  try{ await fetch(apiUrl('/data'),{ method:'PUT', headers:authHeaders(), body:JSON.stringify({data:blob}) }); }catch(e){}
+}
+function showAdminStdBtn(){
+  var host=document.getElementById('std-tabs-body'); if(!host||document.getElementById('std-save-btn')) return;
+  var d=document.createElement('div'); d.style.marginTop='12px';
+  d.innerHTML='<button class="btn small" id="std-save-btn" onclick="saveStandardsCloud()">현재 기준표를 클라우드에 저장 (관리자 → 전체 공유)</button> <button class="btn ghost small" onclick="loadStandardsCloud()">클라우드에서 불러오기</button>';
+  host.appendChild(d);
+}
+async function saveStandardsCloud(){
+  if(auth.role!=='관리자'){ toast('관리자만 저장할 수 있습니다.'); return; }
+  try{ var r=await fetch(apiUrl('/standards'),{ method:'PUT', headers:authHeaders(), body:JSON.stringify({standards:PQ_STANDARDS}) }); if(r.ok) toast('기준표를 클라우드에 저장했습니다. (모든 사용자에게 공유)'); else toast('저장 실패'); }catch(e){ toast('서버 연결 실패'); }
+}
+async function bootCloud(){
+  var t=null; try{ t=sessionStorage.getItem('pq_token'); }catch(e){}
+  if(t){ auth.token=t; try{ var r=await fetch(apiUrl('/me'),{ headers:authHeaders() }); if(r.ok){ var d=await r.json(); auth.user=d.username; auth.role=d.role; afterLogin(); return; } }catch(e){} auth.token=null; }
+  showLogin();
+}
+
 /* ── 유의문구 (문서 15번) ── */
 function renderDisclaimer() {
   document.getElementById('disclaimer').innerHTML =
@@ -645,7 +764,7 @@ window.addEventListener('DOMContentLoaded', function() {
   renderStandards();
   refreshCostOptions();
   fillVerBadge();
-  loadFromCCAP();
+  if (CLOUD_ON) bootCloud(); else loadFromCCAP();
 });
 </script>
 </body>
