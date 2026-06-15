@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="pq-build" content="1781543791">
+<meta name="pq-build" content="1781544289">
 <title>건설기술인 PQ 경력분석 시스템</title>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -1025,6 +1025,22 @@ async function loadDataCloud(){
     var r=await fetch(apiUrl('/data'),{ headers:authHeaders() });
     if(r.ok){ var d=await r.json();
       if(d.data && d.data.ccap && Array.isArray(d.data.ccap.projects) && d.data.ccap.projects.length){
+        var pi=d.data.ccap.personalInfo||null;
+        var nm=(pi&&(pi.name||pi['성명']))||'(이름 없음)';
+        var cnt=d.data.ccap.projects.length;
+        var el=document.getElementById('data-status');
+        if(el) el.innerHTML='이전에 저장한 경력 데이터가 있습니다 — 대상자: <strong style="color:var(--ink);">'+escapeHtml(nm)+'</strong> · '+cnt+'건. <button class="btn small" style="margin-left:6px;" onclick="loadSavedCareer()">이 경력 불러오기</button><br><span class="help" style="margin-top:7px;display:inline-block;">새 경력을 분석하려면 위에서 <strong>경력증명서를 업로드</strong>하세요. 저장된 경력은 자동으로 불러오지 않습니다. 완전히 지우려면 위 “경력 데이터 초기화”를 누르세요.</span>';
+        return;
+      }
+    }
+  }catch(e){}
+}
+async function loadSavedCareer(){
+  if(!CLOUD_ON||!auth.token){ toast('로그인 후 이용할 수 있습니다.'); return; }
+  try{
+    var r=await fetch(apiUrl('/data'),{ headers:authHeaders() });
+    if(r.ok){ var d=await r.json();
+      if(d.data && d.data.ccap && Array.isArray(d.data.ccap.projects) && d.data.ccap.projects.length){
         pqState.personalInfo=d.data.ccap.personalInfo||null;
         pqState.projects=d.data.ccap.projects||[];
         pqState.rates=(d.data.pq&&d.data.pq.rates)||pqState.projects.map(function(){return 100;});
@@ -1032,13 +1048,16 @@ async function loadDataCloud(){
         pqState.quals=(d.data.pq&&Array.isArray(d.data.pq.quals))?d.data.pq.quals:[];
         pqState.edu=(d.data.pq&&Array.isArray(d.data.pq.edu))?d.data.pq.edu:[];
         pqState.academic=(d.data.pq&&d.data.pq.academic)||null;
+        pqState.loadedFrom='cloud';
         var el=document.getElementById('data-status');
         var nm=(pqState.personalInfo&&(pqState.personalInfo.name||pqState.personalInfo['성명']))||'(이름 없음)';
-        el.innerHTML='<strong style="color:var(--ink);">클라우드에서 경력 데이터를 불러왔습니다.</strong><br>대상자: '+escapeHtml(nm)+' · 프로젝트 '+pqState.projects.length+'건';
+        if(el) el.innerHTML='<strong style="color:var(--ink);">저장된 경력 데이터를 불러왔습니다.</strong><br>대상자: '+escapeHtml(nm)+' · 프로젝트 '+pqState.projects.length+'건';
+        toast('저장된 경력 '+pqState.projects.length+'건을 불러왔습니다.');
         return;
       }
     }
-  }catch(e){}
+    toast('불러올 저장된 경력이 없습니다.');
+  }catch(e){ toast('불러오기 실패. 잠시 후 다시 시도하세요.'); }
 }
 var _saveT=null;
 function scheduleSave(){ if(!CLOUD_ON||!auth.token) return; clearTimeout(_saveT); _saveT=setTimeout(saveCloud,1200); }
